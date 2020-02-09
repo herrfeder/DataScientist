@@ -8,12 +8,13 @@ import re
 from sqlalchemy import create_engine
 
 # scikit-learn modules for pipelining, transformation, model fitting and classification
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import GridSearchCV
+from sklearn.base import BaseEstimator, TransformerMixin
+
 
 # scikit-learn model evaluation
 from sklearn.metrics import precision_recall_fscore_support as score
@@ -73,16 +74,97 @@ def tokenize(text):
     return output
 
 
-def build_model(parameters={}):
+class MessageIsQuestion(BaseEstimator, TransformerMixin):
+    '''
+    Extract messages that starts with question word or ends with question mark and
+    return DataFrame with 1's for True and 0's for False
+    '''
+    def __init__(self):
+        '''
+        Create the Regex Variable for checking
+        '''
+        # typical englisch question words
+        question_words = ["what", "when", "do", "is", "who", "which", "where", "why", "how"]
+        # matches question words at beginning of text or questionmarks at the end
+        question_reg = "(^"+"("+"|".join(question_words)+")|(\?)$)"
+        self.q_reg = re.compile(question_reg)
+    
+    def message_question(self, text):
+        '''
+        Will get on text message per execution. After Tokenizing by sentences, it will return 1
+        on matching the regex question_reg or 0 for not matching.
+        
+        Input Arguments:
+            text: Single String with message
+            
+        Output:
+            output: Returns 1 if text includes Question and returns 0 when Question doesn't include question
+        
+        '''
+        # tokenize by sentences
+        sentence_list =  nltk.sent_tokenize(text)
+        for sentence in sentence_list:
+            # find pattern question_reg in each sentence
+            sentence = sentence.lower()
+            if self.q_reg.match(sentence):
+                return 1
+            else:
+                return 0
+
+    def fit(self, x, y=None):
+        return self
+
+    def transform(self, X):
+        '''
+        Will go through single column DataFrame and applies message_question to every message in the row.
+        The returning DataFrame holds 1's or 0's whether the message includes question or not.
+        
+        Input Arguments:
+            X: DataFrame with single column or array/list
+        
+        Output:
+            output: Cleaned DataFrame with 1's and 0's for messages
+        '''
+        
+        # apply message_question function to all values in X
+        X_tagged = pd.Series(X).apply(self.message_question)
+        
+        # clean the resulting Dataframe that it can be processed through the pipeline
+        df_t = pd.DataFrame(X_tagged)
+        df_t.fillna(0, inplace=True)
+        df_t = df_t.astype(int)
+        
+        return df_t
+
+
+def build_model():
+    '''
+    Pipeline with FeatureUnion that feeds the output of TfidfTransformer as features and the message question
+    feature into the model.
+    
+    Input Arguments:
+    
+    Output Arguments:
+        output: Returns Pipeline
+    '''
+    
     pipeline = Pipeline([
-        ('vect', CountVectorizer(tokenizer=tokenize)),
-        ('tfidf', TfidfTransformer()),
-        ('clf', MultiOutputClassifier(RandomForestClassifier(n_estimators=100,
-                                                             min_samples_split=2)))
-    ])
+        ('features', FeatureUnion([
+
+            ('text_pipeline', Pipeline([
+                ('vect', CountVectorizer(tokenizer=tokenize)),
+                ('tfidf', TfidfTransformer())
+            ])),
+
+            ('message_question', MessageIsQuestion())
+        ])),
+
+        ('clf', MultiOutputClassifier(RandomForestClassifier(n_estimators=300,
+                                                             min_samples_split=3,
+                                                             criterion="gini"))
+    )])
     
     return pipeline
-    
 
 
 def evaluate_model(model, X_test, Y_test, category_names):

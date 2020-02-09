@@ -80,6 +80,9 @@ def clean_data(df):
     # remove values other than {0,1}
     df = df[~(df["related"] == 2)]
     
+    # add additional column that holds the melted category
+    
+    
     return df
 
 
