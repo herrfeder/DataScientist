@@ -17,7 +17,6 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 # scikit-learn model evaluation
-from sklearn.metrics import precision_recall_fscore_support as score
 from sklearn.metrics import classification_report
 
 # nltk-modules for text processing, tokenizing and lemmatizing
@@ -167,11 +166,66 @@ def build_model():
     return pipeline
 
 
+def flat_arr_df(two_d_data):
+    """
+    Flatten array/list of arrays/lists and dataframes to lists.
+
+    Input arguments:
+        two_d_data: dataframe or array/list of arrays/lists 
+                    Example: [[1,2,3],[4,5,6],[7,8,9]]
+              
+    Output:
+        flat_data: List of flattened Input
+                   Example: [1,2,3,4,5,6,7,8,9]
+    
+    """
+
+    if isinstance(two_d_data, (list, np.ndarray)):
+        if isinstance(two_d_data[0], (list, np.ndarray)):
+            flat_data = [item for sublist in two_d_data for item in sublist]
+        else:
+            print("Wrong datatype used, cannot flat this object")
+            return ""
+    elif isinstance(two_d_data, pd.DataFrame):
+            flat_data = list(two_d_data.values.flatten())
+    
+    return flat_data
+
+
+def return_flatted_f1_prec_recall(Y_pred, Y_test, mac_avg=False):
+    """
+    Output classification report (f1, precision, recall) for flatted prediction and test data.
+
+    Input arguments:
+        Y_pred: dataframe or array/list of arrays/lists 
+                    Example: [[1,2,3],[4,5,6],[7,8,9]]
+        
+        Y_test: dataframe or array/list of arrays/lists 
+                    Example: [[1,2,3],[4,5,6],[7,8,9]]
+                    
+        mac_avg: If True returns F1-Score
+              
+    Output:
+        If mac_avg==False: prints precision recall and f1-score
+        If mac_avg==True: returns F1-Score only
+    
+    """
+    flat_Y_pred = flat_arr_df(Y_pred)
+    flat_Y_test = flat_arr_df(Y_test)
+    if mac_avg:
+        return classification_report(flat_Y_pred, flat_Y_test, output_dict=True)["macro avg"]["f1-score"]
+    else:
+        print(classification_report(flat_Y_pred, flat_Y_test))
+
+
+#evaluate model and output summarized classification report
 def evaluate_model(model, X_test, Y_test, category_names):
     Y_pred = model.predict(X_test)
+    return_flatted_f1_prec_recall(Y_pred, Y_test)
     pass
 
 
+# save the resulting model
 def save_model(model, model_filepath):
     pickle.dump(model, open(model_filepath, "wb"))
 

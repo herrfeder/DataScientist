@@ -21,24 +21,13 @@ import os
 import sys
 sys.path.append('../')
 from models.train_classifier import MessageIsQuestion
+from models.train_classifier import tokenize
 from sklearn.base import BaseEstimator, TransformerMixin
 import nltk
 
 
 app = Flask(__name__,
             static_folder='static',)
-
-def tokenize(text):
-    tokens = word_tokenize(text)
-    lemmatizer = WordNetLemmatizer()
-
-    clean_tokens = []
-    for tok in tokens:
-        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
-        clean_tokens.append(clean_tok)
-
-    return clean_tokens
-
 
 
 def create_graph(df, path="static/graph_disaster_response.html"):
@@ -85,6 +74,7 @@ def create_graph(df, path="static/graph_disaster_response.html"):
         
         return df_tok_melt
     
+    
     df_tok_melt = prepare_data_graph(df)
     
     # prepare interpolation for map values to range between 0 and 1
@@ -94,6 +84,7 @@ def create_graph(df, path="static/graph_disaster_response.html"):
     g = Network("1000px", "1500px", notebook=True)
     g.hrepulsion(central_gravity=6.55, spring_length=620, node_distance=465, damping=1)
     
+    # draw the nodes for the Category
     cat_dict = {}
     node_index = 0
     for cat, value in df_tok_melt["variable"].value_counts().sort_values(ascending=False)[:15].iteritems():
@@ -101,12 +92,14 @@ def create_graph(df, path="static/graph_disaster_response.html"):
         cat_dict[cat] = node_index
         g.add_node(cat_dict[cat], value=value*10000, title="Category {}: {}".format(cat,str(value)), label=cat )
     
+    # draw the nodes for the words
     word_dict = {}
     for word, value in df_tok_melt["tok_message"].value_counts().sort_values(ascending=False)[:100].iteritems():
         node_index += 1
         word_dict[word] = node_index
-        g.add_node(word_dict[word], value=value*1000, title="Word: {}: {}".format(word,str(value)), color="red",label=word)
+        g.add_node(word_dict[word], value=value*100000, title="Word: {}: {}".format(word,str(value)), color="red",label=word)
 
+    # draw the edges between category and words
     word_per_cat = pd.DataFrame(df_tok_melt.groupby("tok_message")["variable"].value_counts()).T
     edge_dict = {}
     for word in word_dict.keys():
@@ -116,6 +109,7 @@ def create_graph(df, path="static/graph_disaster_response.html"):
             except:
                 pass
 
+    # save resulting graph into path
     g.save_graph(path)
 
     
@@ -138,7 +132,6 @@ def index():
             create_graph(df)
             
     graphname = graph_path
-    print(graphname)
     # create visuals
     
     cols = df.iloc[:,5:].columns
@@ -146,7 +139,6 @@ def index():
     category_counts = df_melt[df_melt["value"] == 1]["variable"].value_counts()
     category_names = list(category_counts.index)
     
-
 
     graphs = [
         {
@@ -169,12 +161,12 @@ def index():
         }
     ]
     
-    # encode plotly graphs in JSON
+    # encode plotly graph in JSON
     ids = ["graph-{}".format(i) for i, _ in enumerate(graphs)]
     graphJSON = json.dumps(graphs, cls=plotly.utils.PlotlyJSONEncoder)
     
-    # render web page with plotly graphs
-    return render_template('master.html', ids=ids, graphJSON=graphJSON, graphname=graphname)
+    # render web page with plotly graph and PyVis graph
+    return render_template('viewdata.html', ids=ids, graphJSON=graphJSON, graphname=graphname)
 
 
 # web page that handles user query and displays model results
