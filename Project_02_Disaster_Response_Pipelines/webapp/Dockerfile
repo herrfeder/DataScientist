@@ -6,7 +6,9 @@ RUN pip install numpy==1.13
 RUN pip install scipy==0.19.1
 RUN pip install Flask==1.0.0
 RUN pip install pandas==1.0.0
-RUN pip install scikit_learn==0.18.2
+RUN pip install scikit_learn
+RUN pip install nltk
+RUN 
 
 ENV ENVIRONMENT production
 
