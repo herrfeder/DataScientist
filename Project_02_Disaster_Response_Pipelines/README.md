@@ -22,16 +22,16 @@ Therefore the Goal is to feed the processed text messages as the features and th
 
 ## Screenshots of Webapp
 ### Landing Page with first Plotly Visualisation
-![](https://imgur.com/xTMDsW5.jpg){:height="50%" width="50%"}
+![](https://imgur.com/xTMDsW5.jpg){#id .class width=300px height=200px}
 
 ### Second Graph Visualisation on Landing Page
-![](https://imgur.com/paJIsXT.jpg){:height="50%" width="50%"}
+![](https://imgur.com/paJIsXT.jpg){#id .class width=300px height=200px}
 
 ### Zoom into Second Graph Visualisation
-![](https://imgur.com/bS8uYnF.jpg){:height="50%" width="50%"}
+![](https://imgur.com/bS8uYnF.jpg){#id .class width=300px height=200px}
 
 ### Classification of Example Message "Help me. I need water."
-![](https://imgur.com/95ZeX3K.jpg){:height="50%" width="50%"}
+![](https://imgur.com/95ZeX3K.jpg){#id .class width=300px height=200px}
 
 
 ## Included Files
