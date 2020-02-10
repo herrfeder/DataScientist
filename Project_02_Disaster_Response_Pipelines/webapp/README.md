@@ -1,16 +1,10 @@
 # Disaster Response Pipeline Project
 
-## Landing Page with first Plotly Visualisation
-![](https://imgur.com/xTMDsW5.jpg)
+## Screenshots
 
-## Second Graph Visualisation on Landing Page
-![](https://imgur.com/paJIsXT.jpg)
-
-## Zoom into Second Graph Visualisation
-![](https://imgur.com/bS8uYnF.jpg)
-
-## Classification of Example Message "Help me. I need water."
-![](https://imgur.com/95ZeX3K.jpg)
+|  Landing Page with first Plotly Visualisation | Second Graph Visualisation on Landing Page |  Zoom into Second Graph Visualisation | Classification of Example Message "Help me. I need water." |
+|--------------------------------------|--------------------------------------|--------------------------------------|--------------------------------------|
+| ![](https://imgur.com/xTMDsW5.jpg) | ![](https://imgur.com/paJIsXT.jpg) | ![](https://imgur.com/bS8uYnF.jpg) | ![](https://imgur.com/95ZeX3K.jpg) |
 
 ### Instructions:
 1. Run the following commands in the project's root directory to set up your database and model.

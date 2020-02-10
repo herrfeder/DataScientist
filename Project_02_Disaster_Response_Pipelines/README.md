@@ -21,17 +21,11 @@ Therefore the Goal is to feed the processed text messages as the features and th
   * Webdesign: __Bootstrap 4__ and __Bootstrap 4 Material__
 
 ## Screenshots of Webapp
-### Landing Page with first Plotly Visualisation
-![](https://imgur.com/xTMDsW5.jpg){#id .class width=300px height=200px}
+## Preview
 
-### Second Graph Visualisation on Landing Page
-![](https://imgur.com/paJIsXT.jpg){#id .class width=300px height=200px}
-
-### Zoom into Second Graph Visualisation
-![](https://imgur.com/bS8uYnF.jpg){#id .class width=300px height=200px}
-
-### Classification of Example Message "Help me. I need water."
-![](https://imgur.com/95ZeX3K.jpg){#id .class width=300px height=200px}
+|  Landing Page with first Plotly Visualisation | Second Graph Visualisation on Landing Page |  Zoom into Second Graph Visualisation | Classification of Example Message "Help me. I need water." |
+|--------------------------------------|--------------------------------------|--------------------------------------|--------------------------------------|
+| ![](https://imgur.com/xTMDsW5.jpg) | ![](https://imgur.com/paJIsXT.jpg) | ![](https://imgur.com/bS8uYnF.jpg) | ![](https://imgur.com/95ZeX3K.jpg) |
 
 
 ## Included Files
