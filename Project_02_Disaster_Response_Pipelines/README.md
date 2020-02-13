@@ -53,9 +53,11 @@ Therefore the Goal is to feed the processed text messages as the features and th
 I prepared a Dockerfile that should automate the installation and deployment.
 For further instructions see folder [webapp](https://github.com/herrfeder/DataScientist/tree/master/Project_02_Disaster_Response_Pipelines/webapp/workspace)
 
+I'm running the Web Application temporary on my own server: https://federland.dnshome.de/disasterresponse
+Please be gentle, it's running on limited resources. This app __isn't responsive__.
+
 ## Acknowledgements
 
   * To [Nicolas](https://www.linkedin.com/in/essipova/), my Udacity Mentor for guiding me through some obstacles during this project
   * To the very good [Scikit Learn Documentation](https://scikit-learn.org/stable/), that helped me to understand a few things
 
-Moreover I'm running the Web Application temporary on my own server: https://federland.dnshome.de/disasterresponse/
