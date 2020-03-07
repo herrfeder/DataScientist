@@ -1,6 +1,9 @@
 import pathlib
 import numpy as np
 import pandas as pd
+from operator import itemgetter
+from scipy.sparse.linalg import svds
+
 import sys # can use sys to take command line arguments
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
@@ -9,6 +12,9 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 import re
 import nltk
+
+from IPython.core import debugger
+debug = debugger.Pdb().set_trace
 
 try:
     nltk.data.find('tokenizers/punkt')
@@ -35,28 +41,28 @@ class Recommender():
         what do we need to start out our recommender system
         '''
         self.rp = RecommenderPreperation()
-        self.ra = RecommenderAnalysis()
+        self.df, self.user_item = self.rp.get_datasets()
+        
+        self.ra = RecommenderAnalysis(self.df, self.user_item)
 
 
-    def fit(self, k=20):
+    def fit_svd(self, k=20):
         '''
         fit the recommender to your dataset and also have this save the results
         to pull from when you need to make predictions
         '''
         # restructure with k latent features
-        s, u, vt = np.diag(s[:k]), u[:, :k], vt[:k, :]
+        u, s, vt = svds(self.user_item, k)
         
         # take dot product
-        self.user_item_est = np.around(np.dot(np.dot(u, s), vt))
-
-    def predict_rating(self, ):
-        '''
-        makes predictions of a rating for a user on a movie-user combo
-        '''
-
+        user_item_est = np.around(np.dot(np.dot(u, np.diag(s)), vt))
+        
+        # convert prediction array to dataframe
+        self.preds_df = pd.DataFrame(user_item_est, columns = self.user_item.columns)
         
         
-    def make_recs(self,):
+        
+    def make_svd_recs(self,):
         '''
         given a user id or a movie that an individual likes
         make recommendations
@@ -64,45 +70,15 @@ class Recommender():
         pass
     
     
-    def find_similar_users(user_id, sim_level=20, mode="index"):
-        '''
-        Computes the similarity of every pair of users based on the dot product
-        Returns an ordered list.
-
-        INPUT:
-        user_id - (int) a user_id
-        user_item - (pandas dataframe) matrix of users by articles: 
-                    1's when a user has interacted with an article, 0 otherwise
-        sim_level - at least level of similarity in percent 
-
-        OUTPUT:
-        similar_users - (list) an ordered list where the closest users (largest dot product users)
-                        are listed first
-
-        '''
-         # the user_id is our user_idx we will be using
-        user_idx = user_id
-
-        # creating the dot product to get a symmetric matrix with user_id's in row and columns and the values are the similarities
-        user_user_dot = self.user_item.dot(np.transpose(user_item))
-
-        # find the most similiar users by at least a similarity level of sim_level
-        idx_and_value = user_user_dot[user_user_dot[user_idx] >= ((np.max(user_user_dot[user_idx])/100)*sim_level)][user_idx]
-
-        # sort by similarity and convert to simple list
-        most_similiar_user_ids = idx_and_value.sort_values(ascending=False)
-        if mode == "index":
-            most_similiar_user_ids = most_similiar_user_ids.index.tolist()
-            # remove own user_id
-            most_similiar_user_ids.remove(user_idx)
-
-            return most_similiar_user_ids
-        elif mode=="index_value":
-            return most_similiar_user_ids
+    
         
         
-    def user_user_recs_part2(user_id, m=10):
+    def make_collab_recs(self, user_id, m=10):
         """
+        Loops through the users based on closeness to the input user_id
+        For each user - finds articles the user hasn't seen before and provides them as recs
+        Does this until m recommendations are found
+        
         INPUT:
         user_id - (int) a user id
         m - (int) the number of recommendations you want for the user
@@ -111,34 +87,22 @@ class Recommender():
         recs - (list) a list of recommendations for the user by article id
         rec_names - (list) a list of recommendations for the user by article title
 
-        Description:
-        Loops through the users based on closeness to the input user_id
-        For each user - finds articles the user hasn't seen before and provides them as recs
-        Does this until m recommendations are found
-
-        Notes:
-        * Choose the users that have the most total article interactions 
-        before choosing those with fewer article interactions.
-
-        * Choose articles with the articles with the most total interactions 
-        before choosing those with fewer total interactions. 
-
         """
         # create Series with number of interactions per user
-        article_interacts = pd.DataFrame(df["article_id"].value_counts())
+        article_interacts = pd.DataFrame(self.df["article_id"].value_counts())
 
         # get the articles that were already read by user
-        own_art_ids, article_names = get_user_articles(user_id)
+        own_art_ids, article_names = self.ra.get_user_articles(user_id)
 
         # get most similiar users
-        neighbors_df = get_top_sorted_users(user_id)
+        neighbors_df = self.ra.get_top_sorted_users(user_id)
 
         # go through neighbors until we got the wanted amount m of recommendations
         recs=[]
         for index, vals in neighbors_df.iterrows():
 
             # get the read articles by current neighbor 
-            article_ids, article_names = get_user_articles(vals["neighbor_id"])
+            article_ids, article_names = self.ra.get_user_articles(vals["neighbor_id"])
 
             # get number of interactions per article and put into tuple: [(num_interactions, article_id),...]
             article_in_ids  =  [(article_interacts.loc[float(x)].item(), x) for x in article_ids]
@@ -152,52 +116,19 @@ class Recommender():
                 if (not a_id in own_art_ids) and (not a_id in recs):
                     recs.append(a_id)
                     if len(recs) == m:
-                        return recs, get_article_names(recs)
+                        return recs, self.ra.get_article_names(recs)
+                    
+                    
+            user_recs = []
+            for rec, rec_name in zip(recs, self.ra.get_article_names(recs)):
+                user_recs.append((
+                    rec,
+                    rec_name))
 
-        return recs, get_article_names(recs)
+        return user_recs, self.ra.get_token_texts(recs)
     
     
-    def get_top_sorted_users(user_id):
-        """
-        INPUT:
-        user_id - (int)
-        df - (pandas dataframe) df as defined at the top of the notebook 
-        user_item - (pandas dataframe) matrix of users by articles: 
-                1's when a user has interacted with an article, 0 otherwise
-
-
-        OUTPUT:
-        neighbors_df - (pandas dataframe) a dataframe with:
-                        neighbor_id - is a neighbor user_id
-                        similarity - measure of the similarity of each user to the provided user_id
-                        num_interactions - the number of articles viewed by the user - if a u
-
-        Other Details - sort the neighbors_df by the similarity and then by number of interactions where 
-                        highest of each is higher in the dataframe
-
-        """
-
-        # create Series with number of interactions per user
-        user_interacts = self.df["user_id"].value_counts()
-
-        # recycle find_similiar users and get Series with index and values (similarity) for specific user
-        neighbors_df = pd.DataFrame(find_similar_users(user_id, mode="index_value"))
-
-        # parse number of interactions into the new neighbors_df
-        neighbors_df["num_interactions"] = [user_interacts.loc[x] for x in neighbors_df.index]
-
-        # create new continous index and rename columns to useful names
-        neighbors_df = neighbors_df.reset_index().rename(columns={"user_id":"neighbor_id",
-                                                                  user_id:"similarity"})
-
-        # sorting neighbors_df by similarity and num_interactions
-        neighbors_df = neighbors_df.sort_values(by=["similarity", "num_interactions"], ascending=False)
-
-        return neighbors_df  # Return the dataframe specified in the doc_string
-
-
-    
-    def make_content_recs(article_id, m=10, df_ext=""):
+    def make_content_recs(self, article_id, m=10, df_ext=""):
         """
         Build Intersections of tokenized string lists over all entries of dataset with given article_id.
         Sort them by frequency and return sorted list with most similiar articles.
@@ -211,11 +142,11 @@ class Recommender():
 
         # return df with column with tokenized strings
         if df_ext:
-            df = df_ext
+            df_tok = df_ext.copy()
         else:
-            df = self.df
-        df_tok = get_tokenized_articles_df(df)
-
+            df_tok = self.df.copy()
+        
+        df_tok = df_tok.drop_duplicates(subset="title")
         # accept different types of article_id
         if isinstance(article_id,str):
             article_id = int(article_id.split(".")[0])
@@ -231,6 +162,7 @@ class Recommender():
         #                               the intersection of title tokens,
         #                               sum of intersections)
         content_articles = []
+        article_ids = []
         for index, row in df_tok.iterrows():
             set_toks = set(own_title_toks).intersection(set(row["title_tokens"]))
 
@@ -241,10 +173,12 @@ class Recommender():
                 len(set_toks)
             ))
 
+            article_ids.append(row["article_id"])
+            
         # sort list of tuples by sum of intersections
         content_articles.sort(key=itemgetter(3), reverse=True)
 
-        return content_articles[1:m+1]    
+        return content_articles[1:m+1], self.ra.get_token_texts(article_ids[1:m+1])    
 
 
 class RecommenderAnalysis():
@@ -302,6 +236,28 @@ class RecommenderAnalysis():
 
         return article_names  # Return the article names associated with list of article ids
 
+    
+    def get_token_texts(self, article_ids):
+        """
+        INPUT:
+        article_ids - (list) a list of article ids
+        df - (pandas dataframe) df as defined at the top of the notebook
+
+        OUTPUT:
+        article_names - (list) a list of article names associated with the list of article ids 
+                        (this is identified by the title column)
+        """
+        if isinstance(article_ids[0],str):
+            article_ids = [int(x.split(".")[0]) for x in article_ids]
+
+        df = self.df.drop_duplicates(subset="title")
+        
+        title_tokens = df[df["article_id"].isin(article_ids)]["title_tokens"].tolist()
+        
+        token_text = " ".join([item for sublist in title_tokens for item in sublist])
+
+        return token_text  # Return the article names associated with list of article ids
+
 
     def get_user_articles(self, user_id):
         """
@@ -324,6 +280,89 @@ class RecommenderAnalysis():
 
         return article_ids, self.get_article_names(article_ids)  # return the ids and names
         
+    
+    def get_user_interacts(self, user_id):
+        """
+        """
+
+        user_interacts = self.df[self.df.loc["user_id"] == user_id]["user_id"].count()
+
+        return user_interacts
+    
+    
+    def get_top_sorted_users(self, user_id):
+        """
+        Sort the neighbors_df by the similarity and then by number of interactions where 
+        highest of each is higher in the dataframe.
+        
+        INPUT:
+        user_id - (int)
+        df - (pandas dataframe) df as defined at the top of the notebook 
+        user_item - (pandas dataframe) matrix of users by articles: 
+                1's when a user has interacted with an article, 0 otherwise
+
+
+        OUTPUT:
+        neighbors_df - (pandas dataframe) a dataframe with:
+                        neighbor_id - is a neighbor user_id
+                        similarity - measure of the similarity of each user to the provided user_id
+                        num_interactions - the number of articles viewed by the user
+        """
+
+        # create Series with number of interactions per user
+        user_interacts = self.df["user_id"].value_counts()
+
+        # recycle find_similiar users and get Series with index and values (similarity) for specific user
+        neighbors_df = pd.DataFrame(self.find_similar_users(user_id, mode="index_value"))
+
+        # parse number of interactions into the new neighbors_df
+        neighbors_df["num_interactions"] = [user_interacts.loc[x] for x in neighbors_df.index]
+
+        # create new continous index and rename columns to useful names
+        neighbors_df = neighbors_df.reset_index().rename(columns={"user_id":"neighbor_id",
+                                                                  user_id:"similarity"})
+
+        # sorting neighbors_df by similarity and num_interactions
+        neighbors_df = neighbors_df.sort_values(by=["similarity", "num_interactions"], ascending=False)
+
+        return neighbors_df  # Return the dataframe specified in the doc_string
+
+    
+    def find_similar_users(self, user_id, sim_level=20, mode="index"):
+        '''
+        Computes the similarity of every pair of users based on the dot product
+        Returns an ordered list.
+
+        INPUT:
+        user_id - (int) a user_id
+        user_item - (pandas dataframe) matrix of users by articles: 
+                    1's when a user has interacted with an article, 0 otherwise
+        sim_level - at least level of similarity in percent 
+
+        OUTPUT:
+        similar_users - (list) an ordered list where the closest users (largest dot product users)
+                        are listed first
+
+        '''
+         # the user_id is our user_idx we will be using
+        user_idx = user_id
+
+        # creating the dot product to get a symmetric matrix with user_id's in row and columns and the values are the similarities
+        user_user_dot = self.user_item.dot(np.transpose(self.user_item))
+
+        # find the most similiar users by at least a similarity level of sim_level
+        idx_and_value = user_user_dot[user_user_dot[user_idx] >= ((np.max(user_user_dot[user_idx])/100)*sim_level)][user_idx]
+
+        # sort by similarity and convert to simple list
+        most_similiar_user_ids = idx_and_value.sort_values(ascending=False)
+        if mode == "index":
+            most_similiar_user_ids = most_similiar_user_ids.index.tolist()
+            # remove own user_id
+            most_similiar_user_ids.remove(user_idx)
+
+            return most_similiar_user_ids
+        elif mode=="index_value":
+            return most_similiar_user_ids
     
     
 class RecommenderPreperation():
@@ -445,10 +484,15 @@ class RecommenderPreperation():
     
 if __name__ == '__main__':
     # test different parts to make sure it works
-    rp = RecommenderPreperation()
-    df, user_item = rp.get_datasets()
-    ra = RecommenderAnalysis(df, user_item)
-    print(ra.get_user_articles(5))
-    print(ra.get_top_articles(5))
+    reco = Recommender()
+    print("Test Collaborative Filter based Recommendation:")
+    print(reco.make_collab_recs(5))
+    print("Test Content Filter based Recommendation:")
+    print(reco.make_content_recs("1427.0"))
+    #print(reco.fit_svd())
+    #print("Get Top sorted Users")
+    #print(reco.ra.get_top_sorted_users(6))
+    print("Get Token Text")
+    print(reco.ra.get_token_texts(['1429.0', '1330.0', '1431.0', '1427.0', '1364.0', '1314.0', '1293.0', '1170.0', '1162.0', '1304.0']))
     
     

@@ -20,6 +20,7 @@ from precomputing import add_stopwords
 from dash.dependencies import Output, Input, State
 from dateutil import relativedelta
 from plotlywordcloud import plotly_wordcloud
+from recommendengine import Recommender
 
 
 DATA_PATH = pathlib.Path(__file__).parent.resolve()
@@ -143,6 +144,8 @@ BODY = dbc.Container(
         className="mt-12",
 )
 
+
+reco = Recommender()
 
 server = flask.Flask(__name__)
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], server=server)
