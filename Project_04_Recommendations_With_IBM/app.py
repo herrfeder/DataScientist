@@ -16,7 +16,8 @@ import dash_html_components as html
 import plotly.graph_objs as go
 import pandas as pd
 import numpy as np
-from precomputing import add_stopwords
+import os
+import random
 from dash.dependencies import Output, Input, State
 from dateutil import relativedelta
 from plotlywordcloud import plotly_wordcloud
@@ -27,11 +28,23 @@ DATA_PATH = pathlib.Path(__file__).parent.resolve()
 EXTERNAL_STYLESHEETS = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 USER_INTERACTIONS_CSV = "data/user-item-interactions.csv"
 USER_ITEM_MATRIX_P = "data/user_item_matrix.p"
-PLOTLY_LOGO = "https://images.plot.ly/logo/new-branding/plotly-logomark.png"
-USER_INTERACTIONS_DF = pd.read_csv(DATA_PATH.joinpath(USER_INTERACTIONS_CSV), header=0)
-USER_ITEM_MATRIX_DF = pd.read_pickle(DATA_PATH.joinpath(USER_ITEM_MATRIX_P))
+UDACITY_LOGO = "https://cdn.worldvectorlogo.com/logos/udacity.svg"
 
 
+reco = Recommender(df_path=DATA_PATH.joinpath(USER_INTERACTIONS_CSV), 
+                   matrix_path=DATA_PATH.joinpath(USER_ITEM_MATRIX_P))
+
+USERS = reco.ra.get_all_users()
+
+user_labels = []
+for user in USERS:
+    user_labels.append(  {"label": user,
+                          "value": user,
+})
+    
+user_labels.append({"label": "New", "value": "new"})
+
+example_images = ["/static/{}".format(x) for x in os.listdir("static")]
 
 NAVBAR = dbc.Navbar(
     children=[
@@ -39,10 +52,15 @@ NAVBAR = dbc.Navbar(
             # Use row and col to control vertical alignment of logo / brand
             dbc.Row(
                 [
-                    dbc.Col(html.Img(src=PLOTLY_LOGO, height="30px")),
-                    dbc.Col(
-                        dbc.NavbarBrand("Bank Customer Complaints", className="ml-2")
-                    ),
+                    dbc.Col(html.Img(src=UDACITY_LOGO, height="30px")),
+                    dbc.Col(dbc.NavbarBrand("Recommendations with IBM Project", className="ml-2")),
+                    dbc.Col(dbc.NavLink("by David Lassig",
+                                        href="https://www.linkedin.com/in/davidlassig/",
+                                        style={"font-color": "white", "fontSize": 10, "font-weight": "lighter"}, 
+                                        className="ml-2")),
+                    dbc.Col(dbc.NavLink("Github Repo", href="#")),
+                    dbc.Col(dbc.NavLink("Udacity", href="#")),
+
                 ],
                 align="center",
                 no_gutters=True,
@@ -61,13 +79,34 @@ LEFT_COLUMN = dbc.Jumbotron(
         html.H4(children="User Selection", className="display-5"),
         html.Hr(className="my-2"),
 
-        html.Label("Select a bank", style={"marginTop": 50}, className="lead"),
+        html.Label("Select Type of Recommendation", style={"marginTop": 50}, className="lead"),
+        html.P(
+            "(New User will only get articles based of popularity)",
+            style={"fontSize": 10, "font-weight": "lighter"},
+        ),
+        dcc.Dropdown(
+            options=[{"label":"Collaborative Filtering",
+                      "value":"collab"},
+                     {"label":"Singular Value Decomposition (SVD)",
+                      "value":"svd"}
+            ],        
+            value="collab",
+            id="reco-drop", 
+            clearable=False, 
+            style={"marginBottom": 1, "font-size": 12}
+        ),
+        
+        html.Label("Select a User", style={"marginTop": 50}, className="lead"),
         html.P(
             "(You can use the dropdown or click the barchart on the right)",
             style={"fontSize": 10, "font-weight": "lighter"},
         ),
         dcc.Dropdown(
-            id="bank-drop", clearable=False, style={"marginBottom": 50, "font-size": 12}
+            options=user_labels,
+            value="new",
+            id="user-drop", 
+            clearable=False, 
+            style={"marginBottom": 50, "font-size": 12}
         ),
         html.Label("Select number of recommendations.", className="lead"),
         dcc.Slider(
@@ -93,6 +132,61 @@ LEFT_COLUMN = dbc.Jumbotron(
     ]
 )
 
+def get_art_con(title, popularity=0, similarity=0):
+    
+    card = dbc.Card([
+            dbc.CardImg(src=random.choice(example_images), top=True),
+            dbc.CardBody(
+            [
+                html.P(
+                    title,
+                    className="card-text",
+                ),
+                dbc.Col(children=[
+                    dbc.Row(children=[
+                                    dbc.Badge("Popularity: "+str(popularity), color="light", className="mr-1"),
+                                    dbc.Badge("Similarity: "+str(similarity), color="light", className="mr-1"),
+                ], style={"margin-bottom": 5}),
+                    dbc.Row(dbc.Button("Read Article (dummy)", color="info", size="sm", style={"font-size": "0.8em"}))
+                ])
+            ])
+    ])
+    
+    return card
+
+
+RECOMMENDATIONS = [
+    dbc.CardHeader(html.H5("Recommendations for New User", id="reco_title")),
+    dbc.CardBody([dbc.Row(children=[
+                            dbc.Col(get_art_con("blah", 5, 4)),
+                            dbc.Col(get_art_con("blub", 4, 3)),
+                            dbc.Col(get_art_con("blobb", 4, 3)),
+
+                        ], style={"margin-bottom":5}
+                  ),
+                  dbc.Row(children=[
+                            dbc.Col(get_art_con("haha", 5, 4)),
+                            dbc.Col(get_art_con("hihi", 4, 3)),
+                            dbc.Col(get_art_con("hoho", 4, 3)),
+
+                        ], style={"margin-bottom":5}
+                  ),
+                  dbc.Row(children=[
+                            dbc.Col(get_art_con("mimi", 5, 4)),
+                            dbc.Col(get_art_con("momo", 4, 3)),
+                            dbc.Col(get_art_con("mama", 4, 3)),
+
+                        ], style={"margin-bottom":5}
+                  ),
+                   dbc.Row(children=[
+                            dbc.Col(get_art_con("mimi", 5, 4)),
+                            dbc.Col(get_art_con("momo", 4, 3)),
+                            dbc.Col(get_art_con("mama", 4, 3)),
+
+                        ], style={"margin-bottom":5}
+                  ),
+                 ], style={"overflow-y": "scroll"} )
+]
 
 WORDCLOUD_PLOT = [
     dbc.CardHeader(html.H5("Most frequently tokenized words in user recommendation")),
@@ -105,47 +199,37 @@ WORDCLOUD_PLOT = [
     dbc.CardBody(
         [
             dbc.Row(
-                [
-                    dbc.Col(
-                        dcc.Loading(
-                            id="loading-frequencies",
-                            children=[dcc.Graph(id="frequency_figure")],
-                            type="default",
-                        )
-                    ),
-                    dbc.Col(
+                [dbc.Col(
                         [ dcc.Loading( id="loading-wordcloud",
                                        children=[ dcc.Graph(id="userwordcloud")
                                                 ], type="default",
                                      )
                         ]),
                  ])
-         ],
-         md=8),
+         ]),
 ]
 
 
 BODY = dbc.Container(
     [dcc.Tabs([
-        dcc.Tab(label='User Recommendation', children=[
+        dcc.Tab(label='Collaboration Based Recommendation', children=[
           
             dbc.Row(
                 [
                     dbc.Col(LEFT_COLUMN, md=4, align="center"),
-                    dbc.Col(dbc.Card(TOP_BANKS_PLOT), md=8),
+                    dbc.Col(dbc.Card(RECOMMENDATIONS), md=8),
                 ],
                 style={"marginTop": 30},
             ),
-            dbc.Card(WORDCLOUD_PLOTS),
+            dbc.Card(WORDCLOUD_PLOT),
             ]),
             
-        dcc.Tab(label='Article Recommendation', children=[])
+        dcc.Tab(label='Content Based Recommendation', children=[])
         ])],
         className="mt-12",
 )
 
 
-reco = Recommender()
 
 server = flask.Flask(__name__)
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], server=server)
@@ -163,16 +247,26 @@ app.layout = html.Div(children=[NAVBAR, BODY])
         Output("no-data-alert", "style"),
     ],
     [
-        Input("user-dropdown", "value"),
+        Input("user-drop", "value"),
         Input("recommend-number", "value")
     ],
 )
-def update_wordcloud_plot(value_drop, rec_number):
+def update_wordcloud_plot(user_id, rec_number):
     """ Callback to rerender wordcloud plot """
-    word_text = get_token_words(user, rec_number)
+    if user_id=="new":
+        user_recs, word_text, rec_ids = reco.ra.get_top_articles(rec_number)
+    else:
+        user_recs, word_text = reco.make_collab_recs(user_id, rec_number)
+        
     wordcloud = plotly_wordcloud(word_text)
     alert_style = {"display": "none"}
     if (wordcloud == {}):
         alert_style = {"display": "block"}
     print("redrawing bank-wordcloud...done")
-return wordcloud
+    return (wordcloud, alert_style)
+
+
+
+
+if __name__ == "__main__":
+    app.run_server(debug=True, port=8050, host="0.0.0.0")

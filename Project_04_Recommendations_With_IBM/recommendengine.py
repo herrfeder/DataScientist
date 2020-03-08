@@ -36,11 +36,11 @@ class Recommender():
     '''
     What is this class all about - write a really good doc string here
     '''
-    def __init__(self, ):
+    def __init__(self, df_path, matrix_path):
         '''
         what do we need to start out our recommender system
         '''
-        self.rp = RecommenderPreperation()
+        self.rp = RecommenderPreperation(df_path, matrix_path)
         self.df, self.user_item = self.rp.get_datasets()
         
         self.ra = RecommenderAnalysis(self.df, self.user_item)
@@ -188,6 +188,10 @@ class RecommenderAnalysis():
         self.df = df
         self.user_item = user_item_matrix
     
+    def get_all_users(self):
+        return self.df["user_id"].unique().tolist()
+    
+    
     
     def get_top_articles(self, n):
         '''
@@ -199,24 +203,15 @@ class RecommenderAnalysis():
         top_articles - (list) A list of the top 'n' article titles 
 
         '''
-        top_articles_titles = self.df[self.df["article_id"].isin(self.get_top_article_ids(n))]["title"].unique()
-
-        return top_articles_titles # Return the top article titles from df (not df_content)
-
-    
-    def get_top_article_ids(self, n):
-        '''
-        INPUT:
-        n - (int) the number of top articles to return
-        df - (pandas dataframe) df as defined at the top of the notebook 
-
-        OUTPUT:
-        top_articles - (list) A list of the top 'n' article titles 
-
-        '''
         top_articles_idx = self.df["article_id"].value_counts().nlargest(n).index.tolist()
+        
+        user_recs = []
+        for idx, idx_name in zip(top_articles_idx, self.get_article_names(top_articles_idx)):
+                user_recs.append((
+                    idx,
+                    idx_name))
 
-        return top_articles_idx # Return the top article ids
+        return (user_recs, self.get_token_texts(top_articles_idx), idx) # Return the top article ids
     
         
     def get_article_names(self, article_ids):
@@ -367,14 +362,12 @@ class RecommenderAnalysis():
     
 class RecommenderPreperation():
     
-    def __init__(self):
+    def __init__(self, df_path, matrix_path):
         
-        DATA_PATH = pathlib.Path(__file__).parent.resolve()
-        USER_INTERACTIONS_CSV = "data/user-item-interactions.csv"
-        USER_ITEM_MATRIX_P = "data/user_item_matrix.p"
-        self.df = pd.read_csv(DATA_PATH.joinpath(USER_INTERACTIONS_CSV), header=0)
+      
+        self.df = pd.read_csv(df_path, header=0)
         # load user_item_matrix from pickle to save resources
-        self.user_item_matrix = pd.read_pickle(DATA_PATH.joinpath(USER_ITEM_MATRIX_P))
+        self.user_item_matrix = pd.read_pickle(matrix_path)
         
         # prepare dataframe user_id
         del self.df["Unnamed: 0"]
