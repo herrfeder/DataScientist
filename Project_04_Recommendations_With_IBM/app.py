@@ -44,7 +44,7 @@ for user in USERS:
     
 user_labels.append({"label": "New", "value": "new"})
 
-example_images = ["/static/{}".format(x) for x in os.listdir("static")]
+example_images = ["/static/images/{}".format(x) for x in os.listdir("static/images")]
 
 NAVBAR = dbc.Navbar(
     children=[
@@ -132,7 +132,17 @@ LEFT_COLUMN = dbc.Jumbotron(
     ]
 )
 
-def get_art_con(title, popularity=0, similarity=0):
+def get_art_con(title, popularity=-1, similarity=-1):
+    
+    if (popularity!=-1) and (similarity!=-1):
+        badge_list = [dbc.Badge("Popularity: "+str(popularity), color="light", className="mr-1"),
+                      dbc.Badge("Similarity: "+str(similarity), color="light", className="mr-1")]
+    elif (similarity!=-1):
+        badge_list = [dbc.Badge("Similarity: "+str(similarity), color="light", className="mr-1")]
+    elif (popularity!=-1):
+        badge_list = [dbc.Badge("Popularity: "+str(popularity), color="light", className="mr-1")]
+    else:
+        badge_list = [dbc.Badge("Similarity: "+str(similarity), color="light", className="mr-1 invisible")]
     
     card = dbc.Card([
             dbc.CardImg(src=random.choice(example_images), top=True),
@@ -143,10 +153,7 @@ def get_art_con(title, popularity=0, similarity=0):
                     className="card-text",
                 ),
                 dbc.Col(children=[
-                    dbc.Row(children=[
-                                    dbc.Badge("Popularity: "+str(popularity), color="light", className="mr-1"),
-                                    dbc.Badge("Similarity: "+str(similarity), color="light", className="mr-1"),
-                ], style={"margin-bottom": 5}),
+                    dbc.Row(children=badge_list, style={"margin-bottom": 5}),
                     dbc.Row(dbc.Button("Read Article (dummy)", color="info", size="sm", style={"font-size": "0.8em"}))
                 ])
             ])
@@ -154,38 +161,33 @@ def get_art_con(title, popularity=0, similarity=0):
     
     return card
 
+def populate_reco_articles(art_dict_list):
+    row_children = []
+    body = []
+    for index, item in enumerate(art_dict_list):
+        row_children.append(dbc.Col(
+            get_art_con(item.get("title",""), 
+                        item.get("popularity",-1),
+                        item.get("similarity", -1))
+            ))
+        if ((index+1) % 3 == 0) and (index!=0):
+            body.append(dbc.Row(children=row_children, 
+                                style={"margin-bottom":8}))
+            row_children = []
+            
+    for i in range(len(row_children),3):
+        row_children.append(dbc.Col())
+        
+    body.append(dbc.Row(children=row_children,
+                        style={"margin-bottom":8}))
+    return body
+        
+    
+
 
 RECOMMENDATIONS = [
     dbc.CardHeader(html.H5("Recommendations for New User", id="reco_title")),
-    dbc.CardBody([dbc.Row(children=[
-                            dbc.Col(get_art_con("blah", 5, 4)),
-                            dbc.Col(get_art_con("blub", 4, 3)),
-                            dbc.Col(get_art_con("blobb", 4, 3)),
-
-                        ], style={"margin-bottom":5}
-                  ),
-                  dbc.Row(children=[
-                            dbc.Col(get_art_con("haha", 5, 4)),
-                            dbc.Col(get_art_con("hihi", 4, 3)),
-                            dbc.Col(get_art_con("hoho", 4, 3)),
-
-                        ], style={"margin-bottom":5}
-                  ),
-                  dbc.Row(children=[
-                            dbc.Col(get_art_con("mimi", 5, 4)),
-                            dbc.Col(get_art_con("momo", 4, 3)),
-                            dbc.Col(get_art_con("mama", 4, 3)),
-
-                        ], style={"margin-bottom":5}
-                  ),
-                   dbc.Row(children=[
-                            dbc.Col(get_art_con("mimi", 5, 4)),
-                            dbc.Col(get_art_con("momo", 4, 3)),
-                            dbc.Col(get_art_con("mama", 4, 3)),
-
-                        ], style={"margin-bottom":5}
-                  ),
-                 ], style={"overflow-y": "scroll"} )
+    dbc.CardBody(children=[], id="reco-body", style={"overflow-y": "scroll", "height": "580px"} )
 ]
 
 WORDCLOUD_PLOT = [
@@ -232,8 +234,10 @@ BODY = dbc.Container(
 
 
 server = flask.Flask(__name__)
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], server=server)
+app = dash.Dash(__name__, external_stylesheets=["/static/css/bootstrap.min.css"], server=server)
 app.layout = html.Div(children=[NAVBAR, BODY])
+app.css.config.serve_locally = True
+app.scripts.config.serve_locally = True
 
 """
 #  Callbacks
@@ -244,14 +248,16 @@ app.layout = html.Div(children=[NAVBAR, BODY])
 @app.callback(
     [
         Output("userwordcloud", "figure"),
+        Output("reco-body", "children"),
         Output("no-data-alert", "style"),
     ],
     [
         Input("user-drop", "value"),
-        Input("recommend-number", "value")
+        Input("recommend-number", "value"),
+        Input("reco-drop", "value")
     ],
 )
-def update_wordcloud_plot(user_id, rec_number):
+def update_wordcloud_reco(user_id, rec_number, rec_type):
     """ Callback to rerender wordcloud plot """
     if user_id=="new":
         user_recs, word_text, rec_ids = reco.ra.get_top_articles(rec_number)
@@ -259,11 +265,12 @@ def update_wordcloud_plot(user_id, rec_number):
         user_recs, word_text = reco.make_collab_recs(user_id, rec_number)
         
     wordcloud = plotly_wordcloud(word_text)
+    reco_body = populate_reco_articles(user_recs)
     alert_style = {"display": "none"}
     if (wordcloud == {}):
         alert_style = {"display": "block"}
     print("redrawing bank-wordcloud...done")
-    return (wordcloud, alert_style)
+    return (wordcloud, reco_body, alert_style)
 
 
 

@@ -92,10 +92,10 @@ class Recommender():
         article_interacts = pd.DataFrame(self.df["article_id"].value_counts())
 
         # get the articles that were already read by user
-        own_art_ids, article_names = self.ra.get_user_articles(user_id)
+        own_art_ids, article_names = self.ra.get_user_articles(int(user_id))
 
         # get most similiar users
-        neighbors_df = self.ra.get_top_sorted_users(user_id)
+        neighbors_df = self.ra.get_top_sorted_users(int(user_id))
 
         # go through neighbors until we got the wanted amount m of recommendations
         recs=[]
@@ -118,14 +118,14 @@ class Recommender():
                     if len(recs) == m:
                         return recs, self.ra.get_article_names(recs)
                     
-                    
+            print(recs)
             user_recs = []
             for rec, rec_name in zip(recs, self.ra.get_article_names(recs)):
-                user_recs.append((
-                    rec,
-                    rec_name))
+                user_recs.append({
+                    "article_id":rec,
+                    "title":rec_name})
 
-        return user_recs, self.ra.get_token_texts(recs)
+        return (user_recs, self.ra.get_token_texts(recs), recs)
     
     
     def make_content_recs(self, article_id, m=10, df_ext=""):
@@ -203,13 +203,19 @@ class RecommenderAnalysis():
         top_articles - (list) A list of the top 'n' article titles 
 
         '''
-        top_articles_idx = self.df["article_id"].value_counts().nlargest(n).index.tolist()
+        top_articles = self.df["article_id"].value_counts().nlargest(n)
+        top_articles_idx = top_articles.index.tolist()
+        top_articles_vals = top_articles.values.tolist()
+        max_pop = self.df["article_id"].value_counts().values.max()
         
         user_recs = []
-        for idx, idx_name in zip(top_articles_idx, self.get_article_names(top_articles_idx)):
-                user_recs.append((
-                    idx,
-                    idx_name))
+        for idx, idx_name, popularity in zip(top_articles_idx, 
+                                 self.get_article_names(top_articles_idx), 
+                                 top_articles_vals):
+                user_recs.append({
+                    "article_id":idx,
+                    "title":idx_name,
+                    "popularity":popularity})
 
         return (user_recs, self.get_token_texts(top_articles_idx), idx) # Return the top article ids
     
