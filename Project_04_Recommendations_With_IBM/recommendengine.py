@@ -96,11 +96,13 @@ class Recommender():
 
         # get most similiar users
         neighbors_df = self.ra.get_top_sorted_users(int(user_id))
-
+        
+        
         # go through neighbors until we got the wanted amount m of recommendations
         recs=[]
+        simis = []
         for index, vals in neighbors_df.iterrows():
-
+            user_sim = vals["similarity"]
             # get the read articles by current neighbor 
             article_ids, article_names = self.ra.get_user_articles(vals["neighbor_id"])
 
@@ -114,18 +116,22 @@ class Recommender():
             # go through sorted article_id's and if not already collected and not in articles of user append to recs
             for a_id in sorted_article_ids:
                 if (not a_id in own_art_ids) and (not a_id in recs):
+                    simis.append(user_sim)
                     recs.append(a_id)
                     if len(recs) == m:
-                        return recs, self.ra.get_article_names(recs)
+                        break
+            if len(recs) == m:
+                break
                     
-            print(recs)
-            user_recs = []
-            for rec, rec_name in zip(recs, self.ra.get_article_names(recs)):
-                user_recs.append({
-                    "article_id":rec,
-                    "title":rec_name})
+         
+        user_recs = []
+        for rec, rec_name, sim in zip(recs, self.ra.get_article_names(recs), simis):
+            user_recs.append({
+                "article_id":rec,
+                "title":rec_name,
+                "similarity": sim})
 
-        return (user_recs, self.ra.get_token_texts(recs), recs)
+        return user_recs, self.ra.get_token_texts(recs), recs
     
     
     def make_content_recs(self, article_id, m=10, df_ext=""):
@@ -190,6 +196,9 @@ class RecommenderAnalysis():
     
     def get_all_users(self):
         return self.df["user_id"].unique().tolist()
+    
+    def get_all_articles(self):
+        return self.df["article_id"].unique().tolist()
     
     
     
@@ -356,6 +365,10 @@ class RecommenderAnalysis():
 
         # sort by similarity and convert to simple list
         most_similiar_user_ids = idx_and_value.sort_values(ascending=False)
+        
+        # normalize similarity value
+        most_similiar_user_ids = np.round(most_similiar_user_ids/most_similiar_user_ids.loc[user_idx],2)
+        
         if mode == "index":
             most_similiar_user_ids = most_similiar_user_ids.index.tolist()
             # remove own user_id
@@ -483,7 +496,9 @@ class RecommenderPreperation():
     
 if __name__ == '__main__':
     # test different parts to make sure it works
-    reco = Recommender()
+    reco = Recommender("data/user-item-interactions.csv", "data/user_item_matrix.p")
+    print(reco.ra.get_top_articles(10))
+
     print("Test Collaborative Filter based Recommendation:")
     print(reco.make_collab_recs(5))
     print("Test Content Filter based Recommendation:")
