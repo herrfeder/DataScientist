@@ -131,7 +131,7 @@ class Recommender():
                 "title":rec_name,
                 "similarity": sim})
 
-        return user_recs, self.ra.get_token_texts(recs), recs
+        return user_recs, self.ra.get_token_texts(recs), recs, neighbors_df
     
     
     def make_content_recs(self, article_id, m=10, df_ext=""):
@@ -167,24 +167,23 @@ class Recommender():
         #                               the name of the article,
         #                               the intersection of title tokens,
         #                               sum of intersections)
-        content_articles = []
         article_ids = []
+        content_recs = []
         for index, row in df_tok.iterrows():
             set_toks = set(own_title_toks).intersection(set(row["title_tokens"]))
-
-            content_articles.append((
-                row["article_id"],
-                row["title"],
-                set_toks,
-                len(set_toks)
-            ))
+            content_recs.append({
+                "article_id": row["article_id"],
+                "title": row["title"],
+                "number_inters_toks": len(set_toks),
+                "similarity":np.round(len(set_toks)/len(own_title_toks),2)
+            })
 
             article_ids.append(row["article_id"])
             
         # sort list of tuples by sum of intersections
-        content_articles.sort(key=itemgetter(3), reverse=True)
+        content_recs.sort(key=itemgetter("number_inters_toks"), reverse=True)
 
-        return content_articles[1:m+1], self.ra.get_token_texts(article_ids[1:m+1])    
+        return content_recs[1:m+1], self.ra.get_token_texts(article_ids[1:m+1]), article_ids    
 
 
 class RecommenderAnalysis():
@@ -199,6 +198,10 @@ class RecommenderAnalysis():
     
     def get_all_articles(self):
         return self.df["article_id"].unique().tolist()
+    
+    def get_all_articles_titles(self):
+        return self.df["title"].unique().tolist()
+    
     
     
     

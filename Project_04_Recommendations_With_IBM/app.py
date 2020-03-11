@@ -37,6 +37,8 @@ reco = Recommender(df_path=DATA_PATH.joinpath(USER_INTERACTIONS_CSV),
 
 USERS = reco.ra.get_all_users()
 ARTICLES = reco.ra.get_all_articles()
+TITLES = reco.ra.get_all_articles_titles()
+
 
 user_labels = []
 for user in USERS:
@@ -48,8 +50,8 @@ user_labels.append({"label": "New", "value": "new"})
 
 
 article_labels = []
-for article in ARTICLES:
-    article_labels.append(  {"label": str(article),
+for article, title in zip(ARTICLES, TITLES):
+    article_labels.append(  {"label": str(article)+": "+title,
                              "value": article,
 })
 
@@ -223,7 +225,7 @@ def get_art_con(title, popularity=-1, similarity=-1):
                     dbc.Row(dbc.Button("Read Article (dummy)", color="info", size="sm", style={"font-size": "0.8em"}))
                 ])
             ])
-    ], style={"height":"275px"})
+    ], style={"height":"290px"})
     
     return card
 
@@ -259,7 +261,7 @@ RECOMMENDATIONS_USER = [
 ]
 
 RECOMMENDATIONS_ARTICLE = [
-    dbc.CardHeader(html.H5("10 Best Recommendations for User New (Popularity Based)", id="reco-title-art")),
+    dbc.CardHeader(html.H5("", id="reco-title-art")),
     dcc.Loading( id="loading-rec-art", children=[
         dbc.CardBody(children=[], id="reco-body-art", style={"overflow-y": "scroll", "height": "580px"} )])
 ]
@@ -307,7 +309,9 @@ WORDCLOUD_PLOT_ARTICLE = [
 ]
 
 
-TABLE_VIEW = dash_table.DataTable(id="tableview")
+TABLE_VIEW = [dbc.CardHeader(html.H5("10 Most Similiar Users")),
+              dbc.CardBody(dcc.Loading(dash_table.DataTable(id="usertableview")))
+                ]
 
 BODY = dbc.Container(
     [dcc.Tabs([
@@ -322,8 +326,8 @@ BODY = dbc.Container(
             ),
             dbc.Row(
                 [
-                    dbc.Col(dbc.Card(WORDCLOUD_PLOT_USER)),
-                    dbc.Col(TABLE_VIEW)
+                    dbc.Col(dbc.Card(WORDCLOUD_PLOT_USER), width=8),
+                    dbc.Col(dbc.Card(TABLE_VIEW), width=4),
                     
             ])]),
             
@@ -357,14 +361,25 @@ app.scripts.config.serve_locally = True
 #  Callbacks
 """
 
-
+def populate_table(df, n=10):
+    
+    df = df.iloc[1:11,:]
+    df.rename(columns={"neighbor_id":"User ID", "num_interactions":"Activity", "similarity":"Similarity"}, inplace=True)
+    columns = [{"name": i, "id": i} for i in df.columns]
+    data = df.to_dict('records')
+    
+    return columns, data
+    
+    
 
 @app.callback(
     [
         Output("userwordcloud-user", "figure"),
         Output("reco-body-user", "children"),
         Output("no-data-alert-user", "style"),
-        Output("reco-title-user", "children")
+        Output("reco-title-user", "children"),
+        Output("usertableview", "data"),
+        Output("usertableview", "columns"),
     ],
     [
         Input("user-drop", "value"),
@@ -372,14 +387,45 @@ app.scripts.config.serve_locally = True
         Input("reco-drop-user", "value")
     ],
 )
-def update_wordcloud_reco(user_id, rec_number, rec_type):
+def update_wordcloud_reco_user(user_id, rec_number, rec_type):
     """ Callback to rerender wordcloud plot """
     if user_id=="new":
         reco_title = "{} Best Recommendations for User {} (Article Popularity)".format(rec_number, user_id)
         user_recs, word_text, rec_ids = reco.ra.get_top_articles(rec_number)
+        data=[]
+        columns=[]
     else:
         reco_title = "{} Best Recommendations for User {} (Similarity of Users)".format(rec_number, user_id)
-        user_recs, word_text, rec_ids = reco.make_collab_recs(user_id, rec_number)
+        user_recs, word_text, rec_ids, neighbors_df = reco.make_collab_recs(user_id, rec_number)
+        columns, data = populate_table(neighbors_df)
+    
+    wordcloud = plotly_wordcloud(word_text)
+    reco_body = populate_reco_articles(user_recs)
+    alert_style = {"display": "none"}
+    if (wordcloud == {}):
+        alert_style = {"display": "block"}
+    
+    return (wordcloud, reco_body, alert_style, reco_title, data, columns)
+
+
+
+@app.callback(
+    [
+        Output("userwordcloud-art", "figure"),
+        Output("reco-body-art", "children"),
+        Output("no-data-alert-art", "style"),
+        Output("reco-title-art", "children")
+    ],
+    [
+        Input("article-drop", "value"),
+        Input("recommend-number-art", "value"),
+    ],
+)
+def update_wordcloud_reco_article(article_id, rec_number):
+    """ Callback to rerender wordcloud plot """
+   
+    reco_title = "{} Best Recommendations for Articles {} (Content Based)".format(rec_number, article_id)
+    user_recs, word_text, rec_ids = reco.make_content_recs(article_id, rec_number)
 
     wordcloud = plotly_wordcloud(word_text)
     reco_body = populate_reco_articles(user_recs)
