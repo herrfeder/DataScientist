@@ -395,9 +395,15 @@ def update_wordcloud_reco_user(user_id, rec_number, rec_type):
         data=[]
         columns=[]
     else:
-        reco_title = "{} Best Recommendations for User {} (Similarity of Users)".format(rec_number, user_id)
-        user_recs, word_text, rec_ids, neighbors_df = reco.make_collab_recs(user_id, rec_number)
-        columns, data = populate_table(neighbors_df)
+        if rec_type=="collab":
+            reco_title = "{} Best Recommendations for User {} (Similarity of Users)".format(rec_number, user_id)
+            user_recs, word_text, rec_ids, neighbors_df = reco.make_collab_recs(user_id, rec_number)
+            columns, data = populate_table(neighbors_df)
+        elif rec_type=="svd":
+            reco_title = "{} Best Recommendations for User {} (Similarity of Users SVD)".format(rec_number, user_id)
+            user_recs, word_text, rec_ids, neighbors_df = reco.make_collab_recs(user_id, base="pred", m=rec_number)
+            columns, data = populate_table(neighbors_df)
+
     
     wordcloud = plotly_wordcloud(word_text)
     reco_body = populate_reco_articles(user_recs)

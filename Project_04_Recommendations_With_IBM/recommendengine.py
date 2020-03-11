@@ -42,8 +42,9 @@ class Recommender():
         '''
         self.rp = RecommenderPreperation(df_path, matrix_path)
         self.df, self.user_item = self.rp.get_datasets()
-        
-        self.ra = RecommenderAnalysis(self.df, self.user_item)
+        self.fit_svd()
+
+        self.ra = RecommenderAnalysis(self.df, self.user_item, self.preds_df)
 
 
     def fit_svd(self, k=20):
@@ -57,23 +58,12 @@ class Recommender():
         # take dot product
         user_item_est = np.around(np.dot(np.dot(u, np.diag(s)), vt))
         
-        # convert prediction array to dataframe
-        self.preds_df = pd.DataFrame(user_item_est, columns = self.user_item.columns)
+        # convert prediction matrix to dataframe
+        self.preds_df = pd.DataFrame(user_item_est, columns = self.user_item.columns, index=self.user_item.index)
         
         
         
-    def make_svd_recs(self,):
-        '''
-        given a user id or a movie that an individual likes
-        make recommendations
-        '''
-        pass
-    
-    
-    
-        
-        
-    def make_collab_recs(self, user_id, m=10):
+    def make_collab_recs(self, user_id, base="data", m=10):
         """
         Loops through the users based on closeness to the input user_id
         For each user - finds articles the user hasn't seen before and provides them as recs
@@ -94,15 +84,19 @@ class Recommender():
         # get the articles that were already read by user
         own_art_ids, article_names = self.ra.get_user_articles(int(user_id))
 
-        # get most similiar users
-        neighbors_df = self.ra.get_top_sorted_users(int(user_id))
-        
-        
+        # get most similiar users with distinction between actual data and predicted SVD data
+        if base=="pred":
+            neighbors_df = self.ra.get_top_sorted_users(int(user_id), user_item="pred")
+        else:
+            neighbors_df = self.ra.get_top_sorted_users(int(user_id))
+
+        print(neighbors_df.head())
         # go through neighbors until we got the wanted amount m of recommendations
         recs=[]
         simis = []
         for index, vals in neighbors_df.iterrows():
             user_sim = vals["similarity"]
+            
             # get the read articles by current neighbor 
             article_ids, article_names = self.ra.get_user_articles(vals["neighbor_id"])
 
@@ -188,10 +182,11 @@ class Recommender():
 
 class RecommenderAnalysis():
     
-    def __init__(self, df, user_item_matrix):
+    def __init__(self, df, user_item_matrix, preds_df):
         
         self.df = df
         self.user_item = user_item_matrix
+        self.preds_df = preds_df
     
     def get_all_users(self):
         return self.df["user_id"].unique().tolist()
@@ -303,7 +298,7 @@ class RecommenderAnalysis():
         return user_interacts
     
     
-    def get_top_sorted_users(self, user_id):
+    def get_top_sorted_users(self, user_id, user_item="data"):
         """
         Sort the neighbors_df by the similarity and then by number of interactions where 
         highest of each is higher in the dataframe.
@@ -326,8 +321,12 @@ class RecommenderAnalysis():
         user_interacts = self.df["user_id"].value_counts()
 
         # recycle find_similiar users and get Series with index and values (similarity) for specific user
-        neighbors_df = pd.DataFrame(self.find_similar_users(user_id, mode="index_value"))
+        if user_item=="data":
+            neighbors_df = pd.DataFrame(self.find_similar_users(user_id, mode="index_value"))
+        elif user_item=="pred":
+            neighbors_df = pd.DataFrame(self.find_similar_users(user_id, mode="index_value", user_item="pred"))
 
+            
         # parse number of interactions into the new neighbors_df
         neighbors_df["num_interactions"] = [user_interacts.loc[x] for x in neighbors_df.index]
 
@@ -341,7 +340,7 @@ class RecommenderAnalysis():
         return neighbors_df  # Return the dataframe specified in the doc_string
 
     
-    def find_similar_users(self, user_id, sim_level=20, mode="index"):
+    def find_similar_users(self, user_id, sim_level=20, mode="index", user_item="data"):
         '''
         Computes the similarity of every pair of users based on the dot product
         Returns an ordered list.
@@ -361,7 +360,10 @@ class RecommenderAnalysis():
         user_idx = user_id
 
         # creating the dot product to get a symmetric matrix with user_id's in row and columns and the values are the similarities
-        user_user_dot = self.user_item.dot(np.transpose(self.user_item))
+        if user_item=="data":
+            user_user_dot = self.user_item.dot(np.transpose(self.user_item))
+        elif user_item=="pred":
+            user_user_dot = self.preds_df.dot(np.transpose(self.preds_df))
 
         # find the most similiar users by at least a similarity level of sim_level
         idx_and_value = user_user_dot[user_user_dot[user_idx] >= ((np.max(user_user_dot[user_idx])/100)*sim_level)][user_idx]
