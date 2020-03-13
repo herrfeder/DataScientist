@@ -47,16 +47,19 @@ class Recommender():
         self.ra = RecommenderAnalysis(self.df, self.user_item, self.preds_df)
 
 
-    def fit_svd(self, k=20):
+    def fit_svd(self, k=""):
         '''
         fit the recommender to your dataset and also have this save the results
         to pull from when you need to make predictions
         '''
         # restructure with k latent features
-        u, s, vt = svds(self.user_item, k)
+        if k:
+            u, s, vt = svds(self.user_item, k)
+        else:
+            u, s, vt = svds(self.user_item)
         
         # take dot product
-        user_item_est = np.around(np.dot(np.dot(u, np.diag(s)), vt))
+        user_item_est = np.dot(np.dot(u, np.diag(s)), vt)
         
         # convert prediction matrix to dataframe
         self.preds_df = pd.DataFrame(user_item_est, columns = self.user_item.columns, index=self.user_item.index)
@@ -90,7 +93,6 @@ class Recommender():
         else:
             neighbors_df = self.ra.get_top_sorted_users(int(user_id))
 
-        print(neighbors_df.head())
         # go through neighbors until we got the wanted amount m of recommendations
         recs=[]
         simis = []
@@ -372,8 +374,8 @@ class RecommenderAnalysis():
         most_similiar_user_ids = idx_and_value.sort_values(ascending=False)
         
         # normalize similarity value
-        most_similiar_user_ids = np.round(most_similiar_user_ids/most_similiar_user_ids.loc[user_idx],2)
-        
+        most_similiar_user_ids = np.round(most_similiar_user_ids/most_similiar_user_ids.max(),3)
+
         if mode == "index":
             most_similiar_user_ids = most_similiar_user_ids.index.tolist()
             # remove own user_id
@@ -505,13 +507,14 @@ if __name__ == '__main__':
     print(reco.ra.get_top_articles(10))
 
     print("Test Collaborative Filter based Recommendation:")
-    print(reco.make_collab_recs(5))
-    print("Test Content Filter based Recommendation:")
-    print(reco.make_content_recs("1427.0"))
+    reco.fit_svd()
+    print(reco.make_collab_recs(5, base="pred"))
+    #print("Test Content Filter based Recommendation:")
+    #print(reco.make_content_recs("1427.0"))
     #print(reco.fit_svd())
     #print("Get Top sorted Users")
     #print(reco.ra.get_top_sorted_users(6))
-    print("Get Token Text")
-    print(reco.ra.get_token_texts(['1429.0', '1330.0', '1431.0', '1427.0', '1364.0', '1314.0', '1293.0', '1170.0', '1162.0', '1304.0']))
+    #print("Get Token Text")
+    #print(reco.ra.get_token_texts(['1429.0', '1330.0', '1431.0', '1427.0', '1364.0', '1314.0', '1293.0', '1170.0', '1162.0', '1304.0']))
     
     

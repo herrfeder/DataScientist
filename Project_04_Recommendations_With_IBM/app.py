@@ -25,6 +25,7 @@ from plotlywordcloud import plotly_wordcloud
 from recommendengine import Recommender
 
 
+### STATIC DATA PATHS ###
 DATA_PATH = pathlib.Path(__file__).parent.resolve()
 EXTERNAL_STYLESHEETS = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 USER_INTERACTIONS_CSV = "data/user-item-interactions.csv"
@@ -32,14 +33,16 @@ USER_ITEM_MATRIX_P = "data/user_item_matrix.p"
 UDACITY_LOGO = "https://cdn.worldvectorlogo.com/logos/udacity.svg"
 
 
+### Init Recommender Class ###
 reco = Recommender(df_path=DATA_PATH.joinpath(USER_INTERACTIONS_CSV), 
                    matrix_path=DATA_PATH.joinpath(USER_ITEM_MATRIX_P))
 
+### Get Lists for Dropdowns ###
 USERS = reco.ra.get_all_users()
 ARTICLES = reco.ra.get_all_articles()
 TITLES = reco.ra.get_all_articles_titles()
 
-
+### Fill List of Dicts for Dropdowns ###
 user_labels = []
 for user in USERS:
     user_labels.append(  {"label": user,
@@ -55,8 +58,14 @@ for article, title in zip(ARTICLES, TITLES):
                              "value": article,
 })
 
+    
+### Load example images for article preview thumbnails
 example_images = ["/static/images/{}".format(x) for x in os.listdir("static/images")]
 
+
+### Create Layout ###
+
+# NAVBAR always on top of website
 NAVBAR = dbc.Navbar(
     children=[
         html.A(
@@ -200,7 +209,23 @@ LEFT_ARTICLE_COLUMN = dbc.Jumbotron(
 )
 
 
+### Functions for populating the dicts from the RecommenderEngine into the Article Recommendations
+
 def get_art_con(title, popularity=-1, similarity=-1):
+    '''
+    
+
+        INPUT:
+        user_id - (int) a user_id
+        user_item - (pandas dataframe) matrix of users by articles: 
+                    1's when a user has interacted with an article, 0 otherwise
+        sim_level - at least level of similarity in percent 
+
+        OUTPUT:
+        similar_users - (list) an ordered list where the closest users (largest dot product users)
+                        are listed first
+
+        '''
     
     if (popularity!=-1) and (similarity!=-1):
         badge_list = [dbc.Badge("Popularity: "+str(popularity), color="light", className="mr-1"),
