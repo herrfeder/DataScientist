@@ -34,11 +34,35 @@ except LookupError:
 
 class Recommender():
     '''
-    What is this class all about - write a really good doc string here
+    Recommender holds several methods to create recommendation with different methods:
+        - fit_svd:
+            Will create the prediction matrix using Singular Value Decomposition
+        - make_collab_recs:
+            Make recommendations based on collaborative filtering
+            It uses either 
+                * the provided data
+                * SVD generated prediction data
+            to find most similiar users based on matrix dot products
+        - make content_recs:
+            Make recommendations based on Similiarity of Article Content.
+            For now it's only using the article title as data input.
+            TODO: extend to complete article text
+    It will integrate the two other classes RecommenderAnalysis and RecommenderPreperation.
+    TODO: these classes should be inherited by this base class
+            
+    INPUT:
+        df_path - (str) gives absolute path for csv based dataset
+        matrix_path - (str) gives absolute path for pickle formatted 2dimensional dataframe
+                      that holds the users in one dimension and all articles in the other
     '''
+    
     def __init__(self, df_path, matrix_path):
         '''
-        what do we need to start out our recommender system
+        The init function will initiate two classes RecommenderPreperation and RecommenderAnalysis:
+            - RecommenderPreperation will act as our ETL pipeline to get our source data into  processable form
+            - RecommenderAnalysis provides for the Recommender multiple functions for returning several aggregations
+            
+        Fitting the SVD-based prediction model that results in self.preds_df
         '''
         self.rp = RecommenderPreperation(df_path, matrix_path)
         self.df, self.user_item = self.rp.get_datasets()
@@ -49,10 +73,16 @@ class Recommender():
 
     def fit_svd(self, k=""):
         '''
-        fit the recommender to your dataset and also have this save the results
-        to pull from when you need to make predictions
+        Fit the recommender to provided dataset using Singular Value Decomposition and storing the result
+        into class variable for prediction
+        
+        INPUT:
+            k - (int) Number of Latent Factors
+            
+        OUTPUT:
+            self.preds_df - (DataFrame) Holds the prediction matrix converted to dataframe
         '''
-        # restructure with k latent features
+        
         if k:
             u, s, vt = svds(self.user_item, k)
         else:
@@ -65,7 +95,6 @@ class Recommender():
         self.preds_df = pd.DataFrame(user_item_est, columns = self.user_item.columns, index=self.user_item.index)
         
         
-        
     def make_collab_recs(self, user_id, base="data", m=10):
         """
         Loops through the users based on closeness to the input user_id
@@ -73,12 +102,15 @@ class Recommender():
         Does this until m recommendations are found
         
         INPUT:
-        user_id - (int) a user id
-        m - (int) the number of recommendations you want for the user
+            user_id - (int) a user id to make recommendations for
+            base - (str) use provided source data with "data" OR use prediction data with "pred"
+            m - (int) the number of recommendations you want for the user
 
         OUTPUT:
-        recs - (list) a list of recommendations for the user by article id
-        rec_names - (list) a list of recommendations for the user by article title
+            user_recs - (list of dicts) each dict holds "article_id", "title" and similarity for each recommendation 
+            token_texts - (str) all tokenized words from all recommended articles in a single string
+            recs - (list) holds recommended "article_ids" only
+            neighbors_df - (DataFrame) most similiar user in dependance of provided user_id
 
         """
         # create Series with number of interactions per user
@@ -119,7 +151,7 @@ class Recommender():
             if len(recs) == m:
                 break
                     
-         
+        #  
         user_recs = []
         for rec, rec_name, sim in zip(recs, self.ra.get_article_names(recs), simis):
             user_recs.append({
@@ -136,10 +168,14 @@ class Recommender():
         Sort them by frequency and return sorted list with most similiar articles.
 
         INPUT:
-            article_id: article_id for article to make content based recommendations for
+            article_id - (float) article_id for article to make content based recommendations for
+                         Example input value: 1401.0
+            m - (int) number of recommendations to return
 
         OUTPUT:
-            content_articles: tuple with recommended articles, intersections and number of total intersectioned words
+            content_recs - (list of dicts) with recommended articles_ids and titles, the number of intersections
+                          and similiarity based on number of matching intersections
+            token_texts - (str) all tokenized words from all recommended articles in a single string
         """
 
         # return df with column with tokenized strings
@@ -149,6 +185,7 @@ class Recommender():
             df_tok = self.df.copy()
         
         df_tok = df_tok.drop_duplicates(subset="title")
+        
         # accept different types of article_id
         if isinstance(article_id,str):
             article_id = int(article_id.split(".")[0])
@@ -159,10 +196,10 @@ class Recommender():
         # store the tokenized strings for the article with the given article_id
         own_title_toks = df_tok[df_tok["article_id"] == article_id]["title_tokens"].item()
 
-        # build list of tuple with the (article_id,
-        #                               the name of the article,
-        #                               the intersection of title tokens,
-        #                               sum of intersections)
+        # build list of dicts with the (article_id,
+        #                               the title of the article,
+        #                               sum of intersected tokens,
+        #                               similarity based on matched tokens)
         article_ids = []
         content_recs = []
         for index, row in df_tok.iterrows():
@@ -275,9 +312,8 @@ class RecommenderAnalysis():
 
         INPUT:
         user_id - (int) a user id
-        user_item - (pandas dataframe) matrix of users by articles: 
-                    1's when a user has interacted with an article, 0 otherwise
-
+        
+        
         OUTPUT:
         article_ids - (list) a list of the article ids seen by the user
         article_names - (list) a list of article names associated with the list of article ids 
@@ -307,9 +343,8 @@ class RecommenderAnalysis():
         
         INPUT:
         user_id - (int)
-        df - (pandas dataframe) df as defined at the top of the notebook 
-        user_item - (pandas dataframe) matrix of users by articles: 
-                1's when a user has interacted with an article, 0 otherwise
+        user_item - (str) with "data" using provided source data OR 
+                    with "pred" using predicted data
 
 
         OUTPUT:
@@ -348,14 +383,17 @@ class RecommenderAnalysis():
         Returns an ordered list.
 
         INPUT:
-        user_id - (int) a user_id
-        user_item - (pandas dataframe) matrix of users by articles: 
-                    1's when a user has interacted with an article, 0 otherwise
-        sim_level - at least level of similarity in percent 
+            user_id - (int) a user_id
+           
+            sim_level - (int) at least level of similarity in percent
+            mode - (str) return only indexes of similiar users on "index" OR
+                   return indexes and similiarity of similiar users on "index_value"
+            user_item - (str) with "data" using provided source data OR 
+                        with "pred" using predicted data
 
         OUTPUT:
-        similar_users - (list) an ordered list where the closest users (largest dot product users)
-                        are listed first
+            most_similiar_user_ids - (Series) where the closest users (largest dot product users)
+                                    are listed first with index only OR index and similiarity
 
         '''
          # the user_id is our user_idx we will be using
@@ -429,10 +467,10 @@ class RecommenderPreperation():
         an article and a 0 otherwise
 
         INPUT:
-        df - pandas dataframe with article_id, title, user_id columns
+            self.df - (DataFrame) with article_id, title, user_id columns
 
         OUTPUT:
-        user_item - user item matrix  
+            user_item - (DataFrame) user item matrix  
         '''
 
         user_item = self.df.groupby(["article_id", "user_id"])["title"].nunique().unstack()
@@ -476,10 +514,10 @@ class RecommenderPreperation():
         Tokenize Strings of Article content and return to seperate Dataframe.
 
         INPUT:
-            df: Dataframe with at least the columns "doc_body", "doc_description", "doc_status", "doc_full_name"
+            self.df - Dataframe with at least the column "title"
 
         OUTPUT:
-            df_temp: Dataframe with at least the columns "doc_full_name", "doc_description_tokens", "doc_name_tokens"
+            title_tokens - (Series) that holds all title_tokens
         '''
 
         # creating copy of df for not changing anything in the input df
@@ -509,12 +547,12 @@ if __name__ == '__main__':
     print("Test Collaborative Filter based Recommendation:")
     reco.fit_svd()
     print(reco.make_collab_recs(5, base="pred"))
-    #print("Test Content Filter based Recommendation:")
-    #print(reco.make_content_recs("1427.0"))
-    #print(reco.fit_svd())
-    #print("Get Top sorted Users")
-    #print(reco.ra.get_top_sorted_users(6))
-    #print("Get Token Text")
-    #print(reco.ra.get_token_texts(['1429.0', '1330.0', '1431.0', '1427.0', '1364.0', '1314.0', '1293.0', '1170.0', '1162.0', '1304.0']))
+    print(reco.make_collab_recs(5))
+    print("Test Content Filter based Recommendation:")
+    print(reco.make_content_recs("1427.0"))
+    print("Get Top sorted Users")
+    print(reco.ra.get_top_sorted_users(6))
+    print("Get Token Text")
+    print(reco.ra.get_token_texts(['1429.0', '1330.0', '1431.0', '1427.0', '1364.0', '1314.0', '1293.0', '1170.0', '1162.0', '1304.0']))
     
     
