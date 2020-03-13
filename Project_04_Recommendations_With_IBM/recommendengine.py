@@ -4,7 +4,6 @@ import pandas as pd
 from operator import itemgetter
 from scipy.sparse.linalg import svds
 
-import sys # can use sys to take command line arguments
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
 from nltk.stem import WordNetLemmatizer
@@ -12,9 +11,6 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 import re
 import nltk
-
-from IPython.core import debugger
-debug = debugger.Pdb().set_trace
 
 try:
     nltk.data.find('tokenizers/punkt')
@@ -53,7 +49,7 @@ class Recommender():
     INPUT:
         df_path - (str) gives absolute path for csv based dataset
         matrix_path - (str) gives absolute path for pickle formatted 2dimensional dataframe
-                      that holds the users in one dimension and all articles in the other
+                      that holds the users in index and all articles in the columns
     '''
     
     def __init__(self, df_path, matrix_path):
@@ -96,7 +92,7 @@ class Recommender():
         
         
     def make_collab_recs(self, user_id, base="data", m=10):
-        """
+        '''
         Loops through the users based on closeness to the input user_id
         For each user - finds articles the user hasn't seen before and provides them as recs
         Does this until m recommendations are found
@@ -112,7 +108,7 @@ class Recommender():
             recs - (list) holds recommended "article_ids" only
             neighbors_df - (DataFrame) most similiar user in dependance of provided user_id
 
-        """
+        '''
         # create Series with number of interactions per user
         article_interacts = pd.DataFrame(self.df["article_id"].value_counts())
 
@@ -163,7 +159,7 @@ class Recommender():
     
     
     def make_content_recs(self, article_id, m=10, df_ext=""):
-        """
+        '''
         Build Intersections of tokenized string lists over all entries of dataset with given article_id.
         Sort them by frequency and return sorted list with most similiar articles.
 
@@ -176,8 +172,8 @@ class Recommender():
             content_recs - (list of dicts) with recommended articles_ids and titles, the number of intersections
                           and similiarity based on number of matching intersections
             token_texts - (str) all tokenized words from all recommended articles in a single string
-        """
-
+            article_ids - (list) holds the associated article_ids only
+        '''
         # return df with column with tokenized strings
         if df_ext:
             df_tok = df_ext.copy()
@@ -220,34 +216,60 @@ class Recommender():
 
 
 class RecommenderAnalysis():
+    '''
+    RecommenderAnalysis will act as our Analytic backend for recommendation modelling and returning several
+    aggregations for viewing in web app or further processing.
+    
+    INPUT:
+        df - (DataFrame) with cleaned and processed source data
+        user_item_matrix - (2D DataFrame) that holds the users in index 
+                            and all articles in the columns
+        preds_df - (2D DataFrame) same structure as user_item_matrix with predicted values
+    '''
+    
     
     def __init__(self, df, user_item_matrix, preds_df):
+        '''
+        Will take data for further processing in the analysis phase.
+        '''
         
         self.df = df
         self.user_item = user_item_matrix
         self.preds_df = preds_df
     
     def get_all_users(self):
+        '''
+        Return a list of all unique user_id's in source data
+        Necessary for Webapp Dropdowns
+        '''
         return self.df["user_id"].unique().tolist()
     
     def get_all_articles(self):
+        '''
+        Return a list of all article_id's in source data
+        Necessary for Webapp Dropdowns
+        '''
         return self.df["article_id"].unique().tolist()
     
     def get_all_articles_titles(self):
+        '''
+        Returns a list of all article title's in source data
+        Necessary for Webapp Dropdowns
+        '''
         return self.df["title"].unique().tolist()
-    
-    
     
     
     def get_top_articles(self, n):
         '''
+        Returns the most popular articles based on interactions with specific articles
+        
         INPUT:
         n - (int) the number of top articles to return
-        df - (pandas dataframe) df as defined at the top of the notebook 
 
         OUTPUT:
-        top_articles - (list) A list of the top 'n' article titles 
-
+            user_recs - (list of dicts) each dict holds "article_id", "title" and "popularity" for each recommendation 
+            token_texts - (str) all tokenized words from all recommended articles in a single string
+            idx - (list) holds recommended "article_ids" only
         '''
         top_articles = self.df["article_id"].value_counts().nlargest(n)
         top_articles_idx = top_articles.index.tolist()
@@ -268,13 +290,14 @@ class RecommenderAnalysis():
         
     def get_article_names(self, article_ids):
         """
+        Returns article_titles for a given list of article_id's
+        
         INPUT:
-        article_ids - (list) a list of article ids
-        df - (pandas dataframe) df as defined at the top of the notebook
+            article_ids - (list) a list of article ids
 
         OUTPUT:
-        article_names - (list) a list of article names associated with the list of article ids 
-                        (this is identified by the title column)
+            article_names - (list) a list of article names associated with the list of article ids 
+                            (this is identified by the title column)
         """
         if isinstance(article_ids[0],str):
             article_ids = [int(x.split(".")[0]) for x in article_ids]
@@ -286,13 +309,14 @@ class RecommenderAnalysis():
     
     def get_token_texts(self, article_ids):
         """
+        Converts all token words of a given list of article_id's into a single string
+        for easy processing into a wordcloud
+        
         INPUT:
-        article_ids - (list) a list of article ids
-        df - (pandas dataframe) df as defined at the top of the notebook
+            article_ids - (list) a list of article ids
 
         OUTPUT:
-        article_names - (list) a list of article names associated with the list of article ids 
-                        (this is identified by the title column)
+            token_text - (str) all title tokens joined to a single string
         """
         if isinstance(article_ids[0],str):
             article_ids = [int(x.split(".")[0]) for x in article_ids]
@@ -311,13 +335,12 @@ class RecommenderAnalysis():
         Provides a list of the article_ids and article titles that have been seen by a user
 
         INPUT:
-        user_id - (int) a user id
-        
+            user_id - (int) a user id
         
         OUTPUT:
-        article_ids - (list) a list of the article ids seen by the user
-        article_names - (list) a list of article names associated with the list of article ids 
-                        (this is identified by the doc_full_name column in df_content)
+            article_ids - (list) a list of the article ids seen by the user
+            article_names - (list) a list of article names associated with the list of article ids 
+                            (this is identified by the doc_full_name column in df_content)
         """
 
         article_ids = self.user_item.loc[user_id][self.user_item.loc[user_id] > 0].index.tolist()
@@ -328,8 +351,15 @@ class RecommenderAnalysis():
         
     
     def get_user_interacts(self, user_id):
-        """
-        """
+        '''
+        Get the number of user interactions (Activity) for specific user with user_id
+        
+        INPUT:
+            user_id - (int) user_id to get number of interactions for
+        
+        OUTPUT:
+            user_interacts - (int) number of total interactions 
+        '''
 
         user_interacts = self.df[self.df.loc["user_id"] == user_id]["user_id"].count()
 
@@ -337,23 +367,22 @@ class RecommenderAnalysis():
     
     
     def get_top_sorted_users(self, user_id, user_item="data"):
-        """
+        '''
         Sort the neighbors_df by the similarity and then by number of interactions where 
         highest of each is higher in the dataframe.
         
         INPUT:
-        user_id - (int)
-        user_item - (str) with "data" using provided source data OR 
-                    with "pred" using predicted data
+            user_id - (int)
+            user_item - (str) with "data" using provided source data OR 
+                        with "pred" using predicted data
 
 
         OUTPUT:
-        neighbors_df - (pandas dataframe) a dataframe with:
-                        neighbor_id - is a neighbor user_id
-                        similarity - measure of the similarity of each user to the provided user_id
-                        num_interactions - the number of articles viewed by the user
-        """
-
+            neighbors_df - (pandas dataframe) a dataframe with:
+                            neighbor_id - is a neighbor user_id
+                            similarity - measure of the similarity of each user to the provided user_id
+                            num_interactions - the number of articles viewed by the user
+        '''
         # create Series with number of interactions per user
         user_interacts = self.df["user_id"].value_counts()
 
@@ -425,10 +454,19 @@ class RecommenderAnalysis():
     
     
 class RecommenderPreperation():
+    '''
+    RecommenderPreperation will act as our ETL pipeline to get our source data into processable form.
     
+    INPUT:
+        df_path - (str) gives absolute path for csv based dataset
+        matrix_path - (str) gives absolute path for pickle formatted 2dimensional dataframe
+                      that holds the users in one dimension and all articles in the other
+    '''
     def __init__(self, df_path, matrix_path):
-        
-      
+        '''
+        The init function will read the necessary source data and process it to be used for analysis and modelling.
+        Adding a column with a list of tokenized words of the article title per row.
+        '''
         self.df = pd.read_csv(df_path, header=0)
         # load user_item_matrix from pickle to save resources
         self.user_item_matrix = pd.read_pickle(matrix_path)
@@ -443,11 +481,19 @@ class RecommenderPreperation():
         self.df["title_tokens"] = self.get_tokenized_articles_df()
 
     def get_datasets(self):
-        
+        '''
+        Return processed DataFrames
+        '''
         return self.df, self.user_item_matrix
     
     
     def email_mapper(self):
+        '''
+        Converts hashed email addresses into continiuous integer user_id for easier processing.
+            
+        OUTPUT:
+            email_encoded - (list) with user_id's
+        '''
         coded_dict = dict()
         cter = 1
         email_encoded = []
@@ -480,18 +526,18 @@ class RecommenderPreperation():
 
     
     def tokenize(self, text):
-        """
+        '''
         Tokenize, lemmatize, lower and remove punctuation of input text.
 
         INPUT:
-            text: Single string with input text 
+            text - (str) with input text 
                   Example: 'For today:= this is, a advanced _ example #- String!'
 
         OUTPUT:
-            output: List of processed string
+            output - (list) of processed string
                     Example: ['today', 'advanced', 'example', 'string']
 
-        """
+        '''
         # set text to lower case and remove punctuation
         text = re.sub("[\W_]", " ", text)
         text= text.lower()
@@ -511,13 +557,13 @@ class RecommenderPreperation():
 
     def get_tokenized_articles_df(self):
         '''
-        Tokenize Strings of Article content and return to seperate Dataframe.
+        Tokenize Strings of Article content and return Series with tokens per article title
 
         INPUT:
             self.df - Dataframe with at least the column "title"
 
         OUTPUT:
-            title_tokens - (Series) that holds all title_tokens
+            title_tokens - (Series) that holds all token words per article title
         '''
 
         # creating copy of df for not changing anything in the input df
@@ -542,8 +588,9 @@ class RecommenderPreperation():
 if __name__ == '__main__':
     # test different parts to make sure it works
     reco = Recommender("data/user-item-interactions.csv", "data/user_item_matrix.p")
+    
+    print("Test Popularity based Recommendation:")
     print(reco.ra.get_top_articles(10))
-
     print("Test Collaborative Filter based Recommendation:")
     reco.fit_svd()
     print(reco.make_collab_recs(5, base="pred"))
