@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Module doc string
-"""
+
 import pathlib
 import re
 import json
@@ -63,169 +61,21 @@ for article, title in zip(ARTICLES, TITLES):
 example_images = ["/static/images/{}".format(x) for x in os.listdir("static/images")]
 
 
-### Create Layout ###
-
-# NAVBAR always on top of website
-NAVBAR = dbc.Navbar(
-    children=[
-        html.A(
-            # Use row and col to control vertical alignment of logo / brand
-            dbc.Row(
-                [
-                    dbc.Col(html.Img(src=UDACITY_LOGO, height="30px")),
-                    dbc.Col(dbc.NavbarBrand("Recommendations with IBM Project", className="ml-2")),
-                    dbc.Col(dbc.NavLink("by David Lassig",
-                                        href="https://www.linkedin.com/in/davidlassig/",
-                                        style={"font-color": "white", "fontSize": 10, "font-weight": "lighter"}, 
-                                        className="ml-2")),
-                    dbc.Col(dbc.NavLink("Github Repo", href="#")),
-                    dbc.Col(dbc.NavLink("Udacity", href="#")),
-
-                ],
-                align="center",
-                no_gutters=True,
-            ),
-            href="https://plot.ly",
-        )
-    ],
-    color="dark",
-    dark=True,
-    sticky="top",
-)
-
-
-LEFT_USER_COLUMN = dbc.Jumbotron(
-    [
-        html.H4(children="User Selection", className="display-5"),
-        html.Hr(className="my-2"),
-
-        html.Label("Select Type of Recommendation", style={"marginTop": 50}, className="lead"),
-        html.P(
-            "(New User will only get articles based of popularity)",
-            style={"fontSize": 10, "font-weight": "lighter"},
-        ),
-        dcc.Dropdown(
-            options=[{"label":"Collaborative Filtering",
-                      "value":"collab"},
-                     {"label":"Singular Value Decomposition (SVD)",
-                      "value":"svd"}
-            ],        
-            value="collab",
-            id="reco-drop-user", 
-            clearable=False, 
-            style={"marginBottom": 1, "font-size": 12}
-        ),
-        
-        html.Label("Select a User", style={"marginTop": 50}, className="lead"),
-        html.P(
-            "(You can use the dropdown or click the barchart on the right)",
-            style={"fontSize": 10, "font-weight": "lighter"},
-        ),
-        dcc.Dropdown(
-            options=user_labels,
-            value="new",
-            id="user-drop", 
-            clearable=False, 
-            style={"marginBottom": 50, "font-size": 12}
-        ),
-        html.Label("Select number of recommendations.", className="lead"),
-        dcc.Slider(
-            id="recommend-number-user",
-            min=1,
-            max=100,
-            step=1,
-            marks={
-                10: "10",
-                20: "",
-                30: "30",
-                40: "",
-                50: "50",
-                60: "",
-                70: "70",
-                80: "",
-                90: "90",
-                100: "",
-            },
-            value=10,
-        ),
-      
-    ]
-)
-
-LEFT_ARTICLE_COLUMN = dbc.Jumbotron(
-    [
-        html.H4(children="Article Selection", className="display-5"),
-        html.Hr(className="my-2"),
-
-        html.Label("Select Type of Recommendation", style={"marginTop": 50}, className="lead"),
-        html.P(
-            "(For articles we only have content based recommendation)",
-            style={"fontSize": 10, "font-weight": "lighter"},
-        ),
-        dcc.Dropdown(
-            options=[{"label":"Content Based",
-                      "value":"content"},
-            ],        
-            value="content",
-            id="reco-drop-art", 
-            clearable=False, 
-            style={"marginBottom": 1, "font-size": 12}
-        ),
-        
-        html.Label("Select a Article", style={"marginTop": 50}, className="lead"),
-        html.P(
-            "(Will return articles with highest similarity)",
-            style={"fontSize": 10, "font-weight": "lighter"},
-        ),
-        dcc.Dropdown(
-            options=article_labels,
-            value=article_labels[0]["value"],
-            id="article-drop", 
-            clearable=False, 
-            style={"marginBottom": 50, "font-size": 12}
-        ),
-        html.Label("Select number of recommendations.", className="lead"),
-        dcc.Slider(
-            id="recommend-number-art",
-            min=1,
-            max=100,
-            step=1,
-            marks={
-                10: "10",
-                20: "",
-                30: "30",
-                40: "",
-                50: "50",
-                60: "",
-                70: "70",
-                80: "",
-                90: "90",
-                100: "",
-            },
-            value=10,
-        ),
-      
-    ]
-)
-
-
 ### Functions for populating the dicts from the RecommenderEngine into the Article Recommendations
 
 def get_art_con(title, popularity=-1, similarity=-1):
     '''
+    Create article within dash_bootstrap_components card html object.
+    For now we're using random example images to draw the article preview.
     
-
-        INPUT:
-        user_id - (int) a user_id
-        user_item - (pandas dataframe) matrix of users by articles: 
-                    1's when a user has interacted with an article, 0 otherwise
-        sim_level - at least level of similarity in percent 
-
-        OUTPUT:
-        similar_users - (list) an ordered list where the closest users (largest dot product users)
-                        are listed first
-
-        '''
+    INPUT:
+        title - (str) article title
+        popularity - (int or float) single value that represents popularity of an article
+        similarity - (int or float) single value that represents similiarity of an article
+        
+    OUTPUT:
+        card - (object) dash_bootstrap_components HTML object
+    '''
     
     if (popularity!=-1) and (similarity!=-1):
         badge_list = [dbc.Badge("Popularity: "+str(popularity), color="light", className="mr-1"),
@@ -256,6 +106,16 @@ def get_art_con(title, popularity=-1, similarity=-1):
 
 
 def populate_reco_articles(art_dict_list):
+    '''
+    Will put the single articles into a grid of dash_bootstrap_components rows and columns.
+    
+    INPUT:
+        art_dict_list - (list of dicts) every dict holds the keys "title", "popularity" and "similiarity"
+    
+    OUTPUT:
+        body - (object) dash_bootstrap_components object that holds article grid ready for webapp
+    '''
+    
     row_children = []
     body = []
     for index, item in enumerate(art_dict_list):
@@ -276,9 +136,186 @@ def populate_reco_articles(art_dict_list):
                         style={"margin-bottom":8}))
     return body
         
+
+def populate_table(df, n=10):
+    '''
+    Will convert an DataFrame into the suitable format for viewing inside an Dash DataTable.
+    
+    INPUT:
+        df - (DataFrame) holds at least the columns "neighbor_id", "num_interactions" and "similarity"
+        n - (int) Number of DataFrame rows to view in DataTable
+    
+    OUTPUT:
+        columns - (list of dicts) holds the necessary info for every column for DataTable view
+        data - (dict) represents DataFrame data in a dict
+    '''
+    
+    
+    df = df.iloc[1:11,:]
+    df.rename(columns={"neighbor_id":"User ID", "num_interactions":"Activity", "similarity":"Similarity"}, inplace=True)
+    columns = [{"name": i, "id": i} for i in df.columns]
+    data = df.to_dict('records')
+    
+    return columns, data
     
 
+    
+### Create Layout ###
 
+# NAVBAR always on top of website
+NAVBAR = dbc.Navbar(
+    children=[
+       
+            dbc.Row(
+                [
+                    dbc.Col(html.A(html.Img(src=UDACITY_LOGO, height="20px"), href="https://www.udacity.com")),
+                    dbc.Col(dbc.NavbarBrand("Recommendations with IBM Project"), className="ml-2"),
+                    dbc.Col(dbc.DropdownMenu(
+                        children=[
+                            dbc.DropdownMenuItem("LinkedIn",
+                                        href="https://www.linkedin.com/in/davidlassig/"),
+                            dbc.DropdownMenuItem("Github Repo", 
+                                        href="#"),
+                          
+                        ],
+                        nav=False,
+                        in_navbar=True,
+                        label="by David Lassig",
+                        style={"color": "white", "font-size": 10, "font-weight":"lighter"},
+                    )),
+                    
+
+                ],
+                align="center",
+                no_gutters=True,
+            ),
+           
+        
+    ],
+    color="dark",
+    dark=True,
+    sticky="top",
+)
+
+
+LEFT_USER_COLUMN = dbc.Jumbotron(
+    [
+        html.H4(children="User Selection", className="display-5"),
+        html.Hr(className="my-2"),
+
+        html.Label("Select a User", style={"marginTop": 50}, className="lead"),
+        html.P(
+            "(Choose a user)",
+            style={"fontSize": 10, "font-weight": "lighter"},
+        ),
+        dcc.Dropdown(
+            options=user_labels,
+            value="new",
+            id="user-drop", 
+            clearable=False, 
+            style={"marginBottom": 10, "font-size": 12}
+        ),
+        
+        html.Label("Select Type of Recommendation", style={"marginTop": 50}, className="lead"),
+        html.P(
+            "(You have to change the user from new first for getting any result here)",
+            style={"fontSize": 10, "font-weight": "lighter"},
+        ),
+        dcc.Dropdown(
+            options=[{"label":"Collaborative Filtering",
+                      "value":"collab"},
+                     {"label":"Singular Value Decomposition (SVD)",
+                      "value":"svd"}
+            ],        
+            value="collab",
+            id="reco-drop-user", 
+            clearable=False, 
+            style={"marginBottom": 30, "font-size": 12}
+        ),
+        
+        
+        html.Label("Select number of recommendations.", className="lead"),
+        dcc.Slider(
+            id="recommend-number-user",
+            min=1,
+            max=100,
+            step=1,
+            marks={
+                10: "10",
+                20: "",
+                30: "30",
+                40: "",
+                50: "50",
+                60: "",
+                70: "70",
+                80: "",
+                90: "90",
+                100: "",
+            },
+            value=10,
+        ),
+      
+    ]
+)
+
+LEFT_ARTICLE_COLUMN = dbc.Jumbotron(
+    [
+        html.H4(children="Article Selection", className="display-5"),
+        html.Hr(className="my-2"),
+
+        html.Label("Select a Article", style={"marginTop": 50}, className="lead"),
+        html.P(
+            "(Will return articles with highest similarity)",
+            style={"fontSize": 10, "font-weight": "lighter"},
+        ),
+        dcc.Dropdown(
+            options=article_labels,
+            value=article_labels[0]["value"],
+            id="article-drop", 
+            clearable=False, 
+            style={"marginBottom": 10, "font-size": 12}
+        ),
+        html.Label("Select Type of Recommendation", style={"marginTop": 50}, className="lead"),
+        html.P(
+            "(For articles we only have content based recommendation)",
+            style={"fontSize": 10, "font-weight": "lighter"},
+        ),
+        dcc.Dropdown(
+            options=[{"label":"Content Based",
+                      "value":"content"},
+            ],        
+            value="content",
+            id="reco-drop-art", 
+            clearable=False, 
+            style={"marginBottom": 30, "font-size": 12}
+        ),
+        
+        
+        html.Label("Select number of recommendations.", className="lead"),
+        dcc.Slider(
+            id="recommend-number-art",
+            min=1,
+            max=100,
+            step=1,
+            marks={
+                10: "10",
+                20: "",
+                30: "30",
+                40: "",
+                50: "50",
+                60: "",
+                70: "70",
+                80: "",
+                90: "90",
+                100: "",
+            },
+            value=10,
+        ),
+      
+    ]
+)
+
+    
 RECOMMENDATIONS_USER = [
     dbc.CardHeader(html.H5("10 Best Recommendations for User New (Popularity Based)", id="reco-title-user")),
     dcc.Loading( id="loading-rec-user", children=[
@@ -311,6 +348,7 @@ WORDCLOUD_PLOT_USER = [
                  ])
          ]),
 ]
+
 
 WORDCLOUD_PLOT_ARTICLE = [
     dbc.CardHeader(html.H5("Most frequently tokenized words in user recommendation")),
@@ -373,30 +411,16 @@ BODY = dbc.Container(
 ], className="mt-12",)
         
 
-
-
-
+### Init webapp ###
 server = flask.Flask(__name__)
 app = dash.Dash(__name__, external_stylesheets=["/static/css/bootstrap.min.css"], server=server)
 app.layout = html.Div(children=[NAVBAR, BODY])
 app.css.config.serve_locally = True
 app.scripts.config.serve_locally = True
 
-"""
-#  Callbacks
-"""
 
-def populate_table(df, n=10):
-    
-    df = df.iloc[1:11,:]
-    df.rename(columns={"neighbor_id":"User ID", "num_interactions":"Activity", "similarity":"Similarity"}, inplace=True)
-    columns = [{"name": i, "id": i} for i in df.columns]
-    data = df.to_dict('records')
-    
-    return columns, data
-    
-    
 
+### Callback for Collaborative Tab tableview, wordcloud and recommendations ###
 @app.callback(
     [
         Output("userwordcloud-user", "figure"),
@@ -439,7 +463,7 @@ def update_wordcloud_reco_user(user_id, rec_number, rec_type):
     return (wordcloud, reco_body, alert_style, reco_title, data, columns)
 
 
-
+### Callback for Content Tab tableview, wordcloud and recommendations ###
 @app.callback(
     [
         Output("userwordcloud-art", "figure"),
@@ -453,7 +477,6 @@ def update_wordcloud_reco_user(user_id, rec_number, rec_type):
     ],
 )
 def update_wordcloud_reco_article(article_id, rec_number):
-    """ Callback to rerender wordcloud plot """
    
     reco_title = "{} Best Recommendations for Articles {} (Content Based)".format(rec_number, article_id)
     user_recs, word_text, rec_ids = reco.make_content_recs(article_id, rec_number)
