@@ -1,3 +1,6 @@
 [submodule "Project_02_Disaster_Response_Pipelines/webapp"]
 	path = Project_02_Disaster_Response_Pipelines/webapp
 	url = https://github.com/herrfeder/Udacity-Project-Disaster-Response-Pipelines-Webapp.git
+[submodule "Project_04_Recommendations_With_IBM/webapp"]
+	path = Project_04_Recommendations_With_IBM/webapp
+	url = https://github.com/herrfeder/Udacity-Project-Recommendations-With-IBM-Webapp.git
