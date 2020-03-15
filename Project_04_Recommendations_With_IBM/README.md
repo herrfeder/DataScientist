@@ -27,7 +27,7 @@ Therefore __the Goal is__ to:
 
 | Control Panel and Recommendation Area | Wordcloud and Most Similiar Users |
 |--------------------------------------|--------------------------------------|
-| ![](screenshots/recommendations_webapp_top.png) | ![](screenshots/recommendations_webapp_bottom.png) |
+| ![](https://github.com/herrfeder/Udacity-Project-Recommendations-With-IBM-Webapp/raw/8db15c2ebe164d14f956c593809874259e378a30/screenshots/recommendations_webapp_top.png) | ![](https://github.com/herrfeder/Udacity-Project-Recommendations-With-IBM-Webapp/raw/8db15c2ebe164d14f956c593809874259e378a30/screenshots/recommendations_webapp_bottom.png) |
 
 ## Included Files
   
@@ -50,7 +50,7 @@ Therefore __the Goal is__ to:
 ## Installation and Deployment
 
 I prepared a Dockerfile that should automate the installation and deployment. 
-For further instructions see folder [webapp](https://github.com/herrfeder/DataScientist/tree/master/Project_02_Disaster_Response_Pipelines/webapp/workspace)
+For further instructions see folder [webapp](https://github.com/herrfeder/Udacity-Project-Recommendations-With-IBM-Webapp.git)
 
 I'm running the Web Application temporary on my own server: https://federland.dnshome.de/recommendations
 Please be gentle, it's running on limited resources. This app __isn't responsive__.
