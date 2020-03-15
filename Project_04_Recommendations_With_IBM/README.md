@@ -41,7 +41,10 @@ Therefore __the Goal is__ to:
 
 ## Brief Results
 
-  * 
+  * The SVD based recommendation engine doesn't perform well because of a high sparsity in the input matrix
+    * The input matrix holds binary values (0 for False, 1 for True) and has therefore many zeroes in it
+    * Therefore the increasing of latent factors leads fast to overfitting
+  * Using intersections of NLP tokenized string groups is a good basis for a content based recommendation
   * By converting the notebook functions into classes the creation of the Dash Webapp was straightforward
 
 ## Installation and Deployment
