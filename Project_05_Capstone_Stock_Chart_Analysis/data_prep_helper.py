@@ -14,7 +14,7 @@ class ChartData():
     
     def __init__(self, window_size=30):
     
-        charts = ["bitcoin_hist", "sp500_hist", "dax_hist", "googl_hist"]
+        charts = ["bitcoin_hist", "sp500_hist", "dax_hist", "googl_hist", "gold_hist"]
         sents = ["bitcoin_sent_df", "economy_sent_df"]
         
         self._chart_df = ""
@@ -148,7 +148,7 @@ class ChartData():
         self.chart_df = self.df_d["bitcoin_hist"][[chart_col]]
         self.chart_df.columns = ["bitcoin_{}".format(x) for x in self.chart_df.columns]
 
-        for stock in ["sp500_hist", "dax_hist", "googl_hist"]:
+        for stock in ["sp500_hist", "dax_hist", "googl_hist", "gold_hist"]:
             stock_name = stock.split("_")[0]
             self.chart_df = self.chart_df.merge(self.df_d[stock][[chart_col]], 
                                                 left_index=True, 
@@ -179,23 +179,39 @@ class ChartData():
         
 
 class ShiftChartData(ChartData):
-    def __init__(self, fixed_col):
+    def __init__(self, fixed_cols):
         super().__init__()    
         
-        if not isinstance(fixed_col, list):
-            fixed_col = [fixed_col]
+        self._fixed_cols = fixed_cols
+    
+    @property
+    def fixed_cols(self):
+        return self._fixed_cols
+    
+    @fixed_cols.setter
+    def fixed_cols(self, fixed_cols):
+        if not isinstance(fixed_cols, list):
+            fixed_cols = [fixed_cols]
             
-        if len(set(fixed_col).intersection(self.chart_df.columns)) < 1:
-            print("This Column doesn't exist in chart_df")
-            sys.exit()
-            
-        self.fixed_cols = fixed_col
-        
-        
-    def single_shift(self, shift_val=-1):
+        self._fixed_cols = self.check_fixed_cols(fixed_cols)
+    
+    
+    def check_fixed_cols(self, fixed_cols):
+        if len(set(fixed_cols).intersection(self.chart_df.columns)) == len(fixed_cols):
+            print("This Column doesn't exist in chart_df, using first column instead")
+            return self.chart_df.columns[0]
+        else:
+            return fixed_cols
+    
+    def get_shift_cols(self):
         cols = list(self.chart_df.columns)
         for fix_col in self.fixed_cols:
             cols.remove(fix_col)
+        
+        return cols
+        
+    def single_shift(self, shift_val=-1):
+        cols = self.get_shift_cols()
             
         df = self.chart_df[self.fixed_cols]
         for col in cols:
@@ -203,11 +219,23 @@ class ShiftChartData(ChartData):
         
         return df
     
+    def gen_multi_shift(self, shift_arr=[ 2, 1, 0, -1, -2]):
+        cols = self.get_shift_cols()
+        
+        df = self.chart_df[self.fixed_cols]
+        for shift_val in shift_arr:
+            for col in cols:
+                df[col] = self.chart_df[col].shift(shift_val)
+            yield shift_val, df
+    
 
 ### APPLY FUNCTIONS ###
     
 def convert_values(row, col):
-    val = row[col].replace(",","")
+    try:
+        val = row[col].replace(",","")
+    except:
+        val = row[col]
     return float(val)
 
 def convert_vol(row, col):
