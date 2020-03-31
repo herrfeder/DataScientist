@@ -14,7 +14,7 @@ class ChartData():
     
     def __init__(self, window_size=30):
     
-        charts = ["bitcoin_hist", "sp500_hist", "dax_hist", "googl_hist", "gold_hist"]
+        charts = ["bitcoin_hist", "sp500_hist", "dax_hist", "googl_hist", "gold_hist", "alibaba_hist", "amazon_hist"]
         sents = ["bitcoin_sent_df", "economy_sent_df"]
         
         self._chart_df = ""
@@ -69,7 +69,10 @@ class ChartData():
             os.path.join(self.data_path, "economy_sentiments.csv"))
         data_source_d["gold_hist"] = pd.read_csv(
             os.path.join(self.data_path, "GOLD Historical Data.csv"))
-
+        data_source_d["alibaba_hist"] = pd.read_csv(
+            os.path.join(self.data_path, "BABA Historical Data.csv"))
+        data_source_d["amazon_hist"] = pd.read_csv(
+            os.path.join(self.data_path, "AMZN Historical Data.csv"))
         return data_source_d
     
 
@@ -148,7 +151,7 @@ class ChartData():
         self.chart_df = self.df_d["bitcoin_hist"][[chart_col]]
         self.chart_df.columns = ["bitcoin_{}".format(x) for x in self.chart_df.columns]
 
-        for stock in ["sp500_hist", "dax_hist", "googl_hist", "gold_hist"]:
+        for stock in ["sp500_hist", "dax_hist", "googl_hist", "gold_hist", "alibaba_hist", "amazon_hist"]:
             stock_name = stock.split("_")[0]
             self.chart_df = self.chart_df.merge(self.df_d[stock][[chart_col]], 
                                                 left_index=True, 
