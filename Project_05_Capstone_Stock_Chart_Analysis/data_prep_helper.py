@@ -12,7 +12,7 @@ class ErrorComparer():
 
 class ChartData():
     
-    def __init__(self, window_size=30):
+    def __init__(self, window_size=30, chart_col="Price"):
     
         charts = ["bitcoin_hist", "sp500_hist", "dax_hist", "googl_hist", "gold_hist", "alibaba_hist", "amazon_hist"]
         sents = ["bitcoin_sent_df", "economy_sent_df"]
@@ -31,7 +31,7 @@ class ChartData():
         for sent in sents:
             self.df_d[sent] = self.prepare_sent(sent)
 
-        self.merge_dict_to_chart_df()
+        self.merge_dict_to_chart_df(chart_col)
         
         
     @property
@@ -159,7 +159,7 @@ class ChartData():
             self.chart_df = self.chart_df.merge(self.df_d[stock][chart_col], 
                                                 left_index=True, 
                                                 right_index=True)
-            self.chart_df = self.chart_df.rename(columns={chart_col:stock_name+"_Price"})
+            self.chart_df = self.chart_df.rename(columns={col:"{}_{}".format(stock_name, col) for col in chart_col})
 
         self.chart_df = self.chart_df.merge(self.df_d["trend_df"], 
                                             left_index=True, 
@@ -185,8 +185,8 @@ class ChartData():
         
 
 class ShiftChartData(ChartData):
-    def __init__(self, fixed_cols):
-        super().__init__()    
+    def __init__(self, fixed_cols="bitcoin_Price", window_size=30, chart_col="Price"):
+        super().__init__(window_size, chart_col)    
         
         self._fixed_cols = fixed_cols
     
@@ -233,6 +233,80 @@ class ShiftChartData(ChartData):
             for col in cols:
                 df[col] = self.chart_df[col].shift(shift_val)
             yield shift_val, df
+            
+    @staticmethod
+    def get_most_causal_cols(df, past=""):
+        
+        cols =   ['bitcoin_Price',
+                 'bitcoin_High',
+                 'bitcoin_Low',
+                 'alibaba_Price',
+                 'alibaba_High',
+                 'alibaba_Low',
+                 'amazon_Price',
+                 'amazon_High',
+                 'amazon_Low',
+                 'bitcoin_Google_Trends',
+                 'cryptocurrency_Google_Trends']
+        
+        week_cols = ["{}_prev_week".format(col) for col in cols]
+        month_cols = ["{}_prev_month".format(col) for col in cols]
+        if past=="now":
+            return df[cols]
+        elif past=="week":
+            week_cols.extend(["month-1","month-2"])
+            return df[week_cols]
+        elif past=="month":
+            month_cols.extend(["month-1","month-2"])
+            return df[month_cols]
+        else:
+            week_cols.extend(month_cols)
+            week_cols.extend(cols)
+            all_cols = week_cols
+            all_cols.extend(["month-1","month-2"])
+            return df[all_cols]
+    
+    @staticmethod
+    def get_dummy_months(df):
+        months = df.index.month
+        dummy_months = pd.get_dummies(months)
+        dummy_months.columns = ['month-%s' % m for m in dummy_months.columns]
+        dummy_months.index = df.index
+        
+        df = pd.concat([df, dummy_months.iloc[:,:3]], axis=1)
+        
+        return df
+    
+    @staticmethod
+    def get_causal_const_shift(df, past=""):
+        
+        df = ShiftChartData.get_dummy_months(df)
+        
+        causal_cols = ["bitcoin_Price", 
+                       "bitcoin_High",
+                       "bitcoin_Low",
+                       "alibaba_Price",
+                       "alibaba_High",
+                       "alibaba_Low",
+                       "amazon_Price",
+                       "amazon_High",
+                       "amazon_Low",
+                       "googl_Price",
+                       "googl_High",
+                       "googl_Low",
+                       "bitcoin_Google_Trends",
+                       "cryptocurrency_Google_Trends",
+                       "economy_pos_sents"]
+        try:
+            for col in causal_cols:
+                df[col+"_prev_week"] = df[col].shift(8)
+                df[col+"_prev_month"] = df[col].shift(31)
+        except:
+            pass
+        
+        df = df.fillna(0)
+        
+        return ShiftChartData.get_most_causal_cols(df, past)
 
             
 class AutoregressiveData(ChartData):
