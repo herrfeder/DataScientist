@@ -176,6 +176,9 @@ class ChartData():
             self.chart_df = self.chart_df.rename(columns={"pos": sent_name+"_pos_sents",
                                               "neg": sent_name+"_neg_sents",
                                               "quot": sent_name+"_quot_sents"})
+            
+            
+        self.chart_df = self.chart_df.resample('D').interpolate()
 
             
     def append_to_chart_df(self, append_df, prefix_name, right_key="Date"):
@@ -237,6 +240,35 @@ class ShiftChartData(ChartData):
     @staticmethod
     def get_most_causal_cols(df, past=""):
         
+        opt_cols = ['bitcoin_Price', 'bitcoin_High', 'bitcoin_Google_Trends_prev_month',
+                    'bitcoin_Google_Trends_prev_week', 'alibaba_High_prev_week',
+                    'alibaba_Price_prev_week', 'bitcoin_Low_prev_month',
+                    'bitcoin_Low_prev_week', 'bitcoin_High_prev_month',
+                    'bitcoin_High_prev_week', 'cryptocurrency_Google_Trends_prev_week',
+                    'bitcoin_Price_prev_month', 'cryptocurrency_Google_Trends',
+                    'bitcoin_Low', 'alibaba_Price',
+                    'alibaba_High', 'alibaba_Low',
+                    'cryptocurrency_Google_Trends_prev_month', 'bitcoin_Google_Trends',
+                    'alibaba_Low_prev_week', 'amazon_Price', 'month-1', 'month-2',
+                    'alibaba_Low_prev_month', 'amazon_High',
+                    'alibaba_Price_prev_month', 'alibaba_High_prev_month',
+                    'amazon_High_prev_month', 'amazon_Low_prev_week',
+                    'amazon_Price_prev_week', 'amazon_High_prev_week', 'sp500_High',
+                    'amazon_Low', 'googl_Price', 'economy_pos_sents_prev_week', 'economy_pos_sents_prev_month']
+        
+        arimax_opt_cols = [
+                   'bitcoin_Price_prev_week',
+                   'bitcoin_Price_prev_month',
+                   'alibaba_Price_prev_week',
+                   'googl_Price_prev_month',
+                   'bitcoin_trends_prev_week',
+                   'bitcoin_trends_prev_month',
+                   'cryptocurrency_trends_prev_week',
+                   'cryptocurrency_trends_prev_month',
+                   'month-1', 'month-2',
+                   ]
+        
+        
         cols =   ['bitcoin_Price',
                  'bitcoin_High',
                  'bitcoin_Low',
@@ -247,10 +279,12 @@ class ShiftChartData(ChartData):
                  'amazon_High',
                  'amazon_Low',
                  'bitcoin_Google_Trends',
-                 'cryptocurrency_Google_Trends']
+                 'cryptocurrency_Google_Trends',
+                 'economy_pos_sents']
         
         week_cols = ["{}_prev_week".format(col) for col in cols]
         month_cols = ["{}_prev_month".format(col) for col in cols]
+        
         if past=="now":
             return df[cols]
         elif past=="week":
@@ -259,18 +293,23 @@ class ShiftChartData(ChartData):
         elif past=="month":
             month_cols.extend(["month-1","month-2"])
             return df[month_cols]
-        else:
+        elif past=="ari":
+            return df[arimax_opt_cols]
+        elif past=="all":
             week_cols.extend(month_cols)
             week_cols.extend(cols)
             all_cols = week_cols
             all_cols.extend(["month-1","month-2"])
             return df[all_cols]
+        
+        else:
+            return df[opt_cols]
     
     @staticmethod
     def get_dummy_months(df):
         months = df.index.month
         dummy_months = pd.get_dummies(months)
-        dummy_months.columns = ['month-%s' % m for m in dummy_months.columns]
+        dummy_months.columns = ['month-%s' % m for m in range(1,len(dummy_months.columns)+1)]
         dummy_months.index = df.index
         
         df = pd.concat([df, dummy_months.iloc[:,:3]], axis=1)
@@ -278,7 +317,7 @@ class ShiftChartData(ChartData):
         return df
     
     @staticmethod
-    def get_causal_const_shift(df, past=""):
+    def get_causal_const_shift(df, past="", zeros="cut"):
         
         df = ShiftChartData.get_dummy_months(df)
         
@@ -299,65 +338,45 @@ class ShiftChartData(ChartData):
                        "economy_pos_sents"]
         try:
             for col in causal_cols:
-                df[col+"_prev_week"] = df[col].shift(8)
-                df[col+"_prev_month"] = df[col].shift(31)
+                if past=="week":
+                    df[col+"_prev_week"] = df[col].shift(8)
+                elif past=="month":
+                    df[col+"_prev_month"] = df[col].shift(31)
+                else:
+                    df[col+"_prev_week"] = df[col].shift(8)
+                    df[col+"_prev_month"] = df[col].shift(31)
         except:
             pass
         
-        df = df.fillna(0)
+        if zeros=="cut" and past=="week":
+            df = df.iloc[8:,:]
+        elif zeros=="cut" and past=="month":
+            df = df.iloc[31:,:]
+        elif zeros=="zero":
+            df.fillna(0, inplace=True)
+        else:
+            df = df.iloc[31:, :]
         
         return ShiftChartData.get_most_causal_cols(df, past)
 
             
-class AutoregressiveData(ChartData):
-    def __init__(self, fixed_cols):
-        super().__init__()    
+class ValidateChartData(ChartData):
+    def __init__(self, fixed_cols="bitcoin_Price", window_size=30, chart_col="Price"):
+        super().__init__(window_size, chart_col)    
         
         self._fixed_cols = fixed_cols
+       
     
-    @property
-    def fixed_cols(self):
-        return self._fixed_cols
-    
-    @fixed_cols.setter
-    def fixed_cols(self, fixed_cols):
-        if not isinstance(fixed_cols, list):
-            fixed_cols = [fixed_cols]
+    def gen_return_splits(self, splits=6, split_size=300, data_len=1800, past="all"):
+        
+        for i in range(3,6):
+            train = self.chart_df[:i*split_size]
+            test = self.chart_df[i*split_size:(i+1)*split_size]
             
-        self._fixed_cols = self.check_fixed_cols(fixed_cols)
-    
-    
-    def check_fixed_cols(self, fixed_cols):
-        if len(set(fixed_cols).intersection(self.chart_df.columns)) == len(fixed_cols):
-            print("This Column doesn't exist in chart_df, using first column instead")
-            return self.chart_df.columns[0]
-        else:
-            return fixed_cols
-    
-    def get_shift_cols(self):
-        cols = list(self.chart_df.columns)
-        for fix_col in self.fixed_cols:
-            cols.remove(fix_col)
-        
-        return cols
-        
-    def single_shift(self, shift_val=-1):
-        cols = self.get_shift_cols()
+            train = ShiftChartData.get_causal_const_shift(train, past=past, zeros="cut")
+            test = ShiftChartData.get_causal_const_shift(test, past=past, zeros="cut")
             
-        df = self.chart_df[self.fixed_cols]
-        for col in cols:
-            df[col+"_"+str(shift_val)] = self.chart_df[col].shift(shift_val)
-        
-        return df
-    
-    def gen_multi_shift(self, shift_arr=[ 2, 1, 0, -1, -2]):
-        cols = self.get_shift_cols()
-        
-        df = self.chart_df[self.fixed_cols]
-        for shift_val in shift_arr:
-            for col in cols:
-                df[col] = self.chart_df[col].shift(shift_val)
-            yield shift_val, df
+            yield train, test
     
     
 ### APPLY FUNCTIONS ###
