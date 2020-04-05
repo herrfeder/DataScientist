@@ -1,19 +1,18 @@
-import os
-import pathlib
-import re
 import json
+import base64
+import datetime
+import requests
+import pathlib
+import math
+import pandas as pd
+import flask
 import dash
 import dash_core_components as dcc
-import dash_bootstrap_components as dbc
 import dash_html_components as html
-import dash_table
-import pandas as pd
-from dash.dependencies import Input, Output, State
-from matplotlib import cm
-from matplotlib import colors
-from scipy import interpolate
-import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
+
+from dash.dependencies import Input, Output, State
+from plotly import tools
 
 # Initialize app
 
@@ -64,28 +63,130 @@ DEFAULT_OPACITY = 0.5
 # App layout
 
 
+# Dash App Layout
 app.layout = html.Div(
-    id="root",
+    className="row",
     children=[
+        # Interval component for live clock
+        #dcc.Interval(id="interval", interval=1 * 1000, n_intervals=0),
+        ## Interval component for ask bid updates
+        #dcc.Interval(id="i_bis", interval=1 * 2000, n_intervals=0),
+        # Interval component for graph updates
+        #dcc.Interval(id="i_tris", interval=1 * 5000, n_intervals=0),
+        # Interval component for graph updates
+        #dcc.Interval(id="i_news", interval=1 * 60000, n_intervals=0),
+        # Left Panel Div
         html.Div(
-            id="header",
+            className="three columns div-left-panel",
             children=[
-                html.Img(id="logo",width="100px", height="200px", src="https://www.nicepng.com/png/detail/21-216488_tis-but-a-scratch-butchers-tears.png"),
-                html.H4(children="TIDE Hackathon Predicting Crisis in AFRICA"),
-                html.P(
-                    id="description",
-                    children="This shows the monthly data for different metrics over all african countries",
+                # Div for Left Panel App Info
+                html.Div(
+                    className="div-info",
+                    children=[
+                        html.Img(
+                            className="logo", src=app.get_asset_url("dash-logo-new.png")
+                        ),
+                        html.H6(className="title-header", children="FOREX TRADER"),
+                        html.P(
+                            """
+                            This app continually queries csv files and updates Ask and Bid prices
+                            for major currency pairs as well as Stock Charts. You can also virtually
+                            buy and sell stocks and see the profit updates.
+                            """
+                        ),
+                    ],
+                ),
+                # Ask Bid Currency Div
+                html.Div(
+                    className="div-currency-toggles",
+                    children=[
+                        html.P(
+                            id="live_clock",
+                            className="three-col",
+                            children=datetime.datetime.now().strftime("%H:%M:%S"),
+                        ),
+                        html.P(className="three-col", children="Bid"),
+                        html.P(className="three-col", children="Ask"),
+                        html.Div(
+                            id="pairs",
+                            className="div-bid-ask",
+                            children=[
+                                
+                            ],
+                        ),
+                    ],
+                ),
+                # Div for News Headlines
+                html.Div(
+                    className="div-news",
+                    children=[html.Div(id="news", children=[])],
                 ),
             ],
         ),
+        # Right Panel Div
         html.Div(
-            id="app-container",
-            children=[dbc.Row(),dbc.Row(),dbc.Row()]
-                
-        
-        )
-    ]
+            className="nine columns div-right-panel",
+            children=[
+                # Top Bar Div - Displays Balance, Equity, ... , Open P/L
+                html.Div(
+                    id="top_bar", className="row div-top-bar", children=[]
+                ),
+                # Charts Div
+                html.Div(
+                    id="charts",
+                    className="row",
+                    children=[],
+                ),
+                # Panel for orders
+                html.Div(
+                    id="bottom_panel",
+                    className="row div-bottom-panel",
+                    children=[
+                        html.Div(
+                            className="display-inlineblock",
+                            children=[
+                                dcc.Dropdown(
+                                    id="dropdown_positions",
+                                    className="bottom-dropdown",
+                                    options=[
+                                        {"label": "Open Positions", "value": "open"},
+                                        {
+                                            "label": "Closed Positions",
+                                            "value": "closed",
+                                        },
+                                    ],
+                                    value="open",
+                                    clearable=False,
+                                    style={"border": "0px solid black"},
+                                )
+                            ],
+                        ),
+                        html.Div(
+                            className="display-inlineblock float-right",
+                            children=[
+                                dcc.Dropdown(
+                                    id="closable_orders",
+                                    className="bottom-dropdown",
+                                    placeholder="Close order",
+                                )
+                            ],
+                        ),
+                        html.Div(id="orders_table", className="row table-orders"),
+                    ],
+                ),
+            ],
+        ),
+        # Hidden div that stores all clicked charts (EURUSD, USDCHF, etc.)
+        html.Div(id="charts_clicked", style={"display": "none"}),
+        # Hidden div for each pair that stores orders
+        html.Div(
+            children=[]),
+
+        # Hidden Div that stores all orders
+        #html.Div(id="orders", style={"display": "none"}),
+    ],
 )
+
              
 
 def exploratory_plot():
@@ -167,4 +268,4 @@ def exploratory_plot():
                 
              
 if __name__ == "__main__":
-    app.run_server(debug=True,  port=8000, host="0.0.0.0")
+    app.run_server(debug=True,  port=8050, host="0.0.0.0")
