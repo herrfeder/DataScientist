@@ -24,7 +24,7 @@ class ChartData():
         
         self.df_d = self.read_data_sources()
         for chart in charts:
-            self.df_d[chart] = self.prep_charts(chart)   
+            self.df_d[chart] = self.prep_charts(chart, norm=True)   
         
         self.df_d["trend_df"] = self.prepare_trend("trend_df")
 
@@ -113,7 +113,7 @@ class ChartData():
         df = df.set_index("Date")
 
         if norm:
-            df["price_norm"] = df["Price"] / df["Price"].max()
+            df["Price_norm"] = df["Price"] / df["Price"].max()
 
         return df
 
