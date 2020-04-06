@@ -57,5 +57,5 @@ def feature_comb_iter(i):
     
     
 if __name__ == '__main__':
-    pool = Pool(os.cpu_count())           # Create a multiprocessing Pool
-    pool.map(feature_comb_iter, range(3,12))  # process range
+    pool = Pool(4)           # Create a multiprocessing Pool
+    pool.map(feature_comb_iter, range(4,10))  # process range

@@ -14,6 +14,7 @@ import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 
+import plot_helper as ph
 import data_prep_helper
 
 from dash.dependencies import Input, Output, State
@@ -73,11 +74,39 @@ def make_item(i):
                 
             ),
             dbc.Collapse(
-                dbc.CardBody(f"This is the content of group {i}..."),
-                id=f"collapse-{i}",
-            ),
-        ]
-    )
+                html.Div([
+                            dcc.Slider(
+                                    id = f"slider-{i}",
+                                    updatemode = "drag",
+                                    vertical = True,
+                                    marks = {i: "{}".format(i) for i in ["blah","blubb"]},
+                                    min = 10,
+                                    max = 40,
+                                    step = 10,
+                                    value = 10)
+                ]), id=f"collapse-{i}"
+            )       
+        ])
+            
+            
+def apply_layout(fig):
+    
+    fig.update_layout(height=1250, title_text="Bitcoin Price Chart against different Indicators")
+    layout = fig["layout"]
+    layout["paper_bgcolor"] = "#002b36"   
+    layout["plot_bgcolor"] = "#1f2630"
+    layout["font"]["color"] = "#2cfec1"
+    layout["title"]["font"]["color"] = "#2cfec1"
+    layout["xaxis"]["tickfont"]["color"] = "#2cfec1"
+    layout["yaxis"]["tickfont"]["color"] = "#2cfec1"
+    layout["xaxis"]["gridcolor"] = "#5b5b5b"
+    layout["yaxis"]["gridcolor"] = "#5b5b5b"
+    layout["margin"]["t"] = 75
+    layout["margin"]["r"] = 0
+    layout["margin"]["b"] = 0
+    layout["margin"]["l"] = 0
+
+    return fig
 
 
 def exploratory_plot():
@@ -85,11 +114,11 @@ def exploratory_plot():
                         rows=4, 
                         cols=1, 
                         shared_xaxes=True, 
-                        vertical_spacing=0.05,
-                        subplot_titles=("Bitcoin Price Chart with Bollinger Bands (30-day)", 
-                                        "Other Normalized Stock Price Charts", 
-                                        "Google Trends", 
-                                        "Sentiments Twitter")
+                        vertical_spacing=0.08,
+                        subplot_titles=("Bitcoin Historic Price Chart with Bollinger Bands (30-day)", 
+                                        "Other Normalized Stock Price Historic Charts", 
+                                        "Historic Google Trends", 
+                                        "Historic Sentiments Twitter")
                         )
 
     df = do.chart_df
@@ -125,11 +154,21 @@ def exploratory_plot():
                              y=df['dax_Price_norm'],
                              name="DAX Normed Close"), row=2, col=1)
 
-
     fig.add_trace(go.Scatter(x=df.index, 
                              y=df['googl_Price_norm'],
                              name="GOOGLE Normed Close"), row=2, col=1)
-
+    
+    fig.add_trace(go.Scatter(x=df.index, 
+                             y=df['gold_Price_norm'],
+                             name="GOLD Normed Close"), row=2, col=1)
+    
+    fig.add_trace(go.Scatter(x=df.index, 
+                             y=df['amazon_Price_norm'],
+                             name="AMAZON Normed Close"), row=2, col=1)
+    
+    fig.add_trace(go.Scatter(x=df.index, 
+                             y=df['alibaba_Price_norm'],
+                             name="ALIBABA Normed Close"), row=2, col=1)
 
     fig.add_trace(go.Scatter(x=df.index,
                              y=df["bitcoin_Google_Trends"],
@@ -150,25 +189,17 @@ def exploratory_plot():
     fig.add_trace(go.Scatter(x=df.index,
                              y=df["economy_quot_sents"],
                              name="'#economy' Sentiments"), row=4, col=1)
-
-    fig.update_layout(height=1000, title_text="Bitcoin Price Chart against different Indicators")
-
-    layout = fig["layout"]
-    layout["paper_bgcolor"] = "#1f2630"
-    layout["plot_bgcolor"] = "#1f2630"
-    layout["font"]["color"] = "#2cfec1"
-    layout["title"]["font"]["color"] = "#2cfec1"
-    layout["xaxis"]["tickfont"]["color"] = "#2cfec1"
-    layout["yaxis"]["tickfont"]["color"] = "#2cfec1"
-    layout["xaxis"]["gridcolor"] = "#5b5b5b"
-    layout["yaxis"]["gridcolor"] = "#5b5b5b"
-    layout["margin"]["t"] = 75
-    layout["margin"]["r"] = 50
-    layout["margin"]["b"] = 100
-    layout["margin"]["l"] = 50
     
-    return fig
+    fig.update_yaxes(title_text="Absolute Price in $", row=1, col=1)
+    fig.update_yaxes(title_text="Normalized Price", row=2, col=1)
+    fig.update_yaxes(title_text="Number of Query per day", row=3, col=1)
+    fig.update_yaxes(title_text="Normalized Sentiment Quotient Value", row=4, col=1)
 
+
+    return apply_layout(fig)
+
+
+exploratory_fig = exploratory_plot()
 
 # NAVBAR always on top of website
 NAVBAR = dbc.Navbar(
@@ -213,14 +244,20 @@ LEFT_COLUMN = dbc.Jumbotron(
         html.Div([
                     make_item("View Data"), 
                     make_item("Correlation Analysis"), 
-                    make_item("Causality Analysis")], className="accordion"),
-              
+                    make_item("Causality Analysis")], className="accordion"),   
     ]
 )
 
-CHART_PLOT = [dbc.CardHeader(html.H5("test")),
+RIGHT_COLUMN = html.Div(id="right_column", children=[dcc.Loading(id="right_column_loading")])
+
+EXP_CHART_PLOT = [dbc.CardHeader(html.H5("Historic Input Datasets")),
               dbc.CardBody(dcc.Loading(dcc.Graph(id="chart_plot",
-                       figure=exploratory_plot())))
+                           figure=exploratory_fig)))
+             ]
+
+CORR_CHART_PLOT = [dbc.CardHeader(html.H5("Historic Input Datasets")),
+              dbc.CardBody(dcc.Loading(dcc.Graph(id="chart_plot",
+                           figure=exploratory_fig)))
              ]
 
 TABLE_VIEW = [dbc.CardHeader(html.H5("10 Most Similiar Users")),
@@ -231,7 +268,7 @@ BODY = dbc.Container([
             dbc.Row(
                 [
                     dbc.Col(LEFT_COLUMN, md=3),
-                    dbc.Col(CHART_PLOT, md=9),
+                    dbc.Col(RIGHT_COLUMN, md=9),
                 ],
                 style={"marginTop": 30},
             ),
@@ -261,14 +298,11 @@ app.scripts.config.serve_locally = True
 
 server = app.server
 
-           
-
-
 
 @app.callback(
-    Output("chart_plot", "figure"),
+    Output("right_column_loading", "children"),
     [Input(f"group-{i}-toggle", "n_clicks") for i in acc_str],
-    [State("chart_plot", "figure")]
+    [State("right_column_loading", "children")]
 )    
 def show_plot(acc_01, acc_02, acc_03, figure):
     ctx = dash.callback_context
@@ -279,10 +313,9 @@ def show_plot(acc_01, acc_02, acc_03, figure):
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
     if (acc_str[0] in button_id):
-        print("blah")
-        return exploratory_plot()
-    else:
-        return exploratory_plot()
+        return EXP_CHART_PLOT
+    elif (acc_str[1] in button_id):
+        return CORR_CHART_PLOT
     
 @app.callback(
     [Output(f"collapse-{i}", "is_open") for i in acc_str],
