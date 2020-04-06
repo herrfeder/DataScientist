@@ -12,7 +12,6 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
-from plotly.subplots import make_subplots
 
 import plot_helper as ph
 import data_prep_helper
@@ -21,12 +20,14 @@ from dash.dependencies import Input, Output, State
 from plotly import tools
 
 do = data_prep_helper.ValidateChartData(chart_col=["Price", "High", "Low", "Price_norm"])
-do.apply_boll_bands("bitcoin_hist", append_chart=True)
 
+acc_str_list = ["View Data", 
+                "Correlation Analysis",
+                "Causality Analysis"]
 
-acc_str = ["View Data", 
-           "Correlation Analysis",
-           "Causality Analysis"]
+acc_slider_list = [["blah","blubb"],
+                   ["Corr Input", "Corr Timeshift", "Conclusions"],
+                   ["Granger Causality", "Conclusions"]]
     
 # Load data
 
@@ -60,147 +61,62 @@ DEFAULT_COLORSCALE = [
 DEFAULT_OPACITY = 0.5
 
 
-def make_item(i):
-    # we use this function to make the example items to avoid code duplication
-    return dbc.Card(
-        [
-            dbc.CardHeader(
-                    dbc.Button(
-                        f"{i}",
-                        color="link",
-                        id=f"group-{i}-toggle",
-                    
-                    )
-                
-            ),
-            dbc.Collapse(
-                html.Div([
-                            dcc.Slider(
-                                    id = f"slider-{i}",
-                                    updatemode = "drag",
-                                    vertical = True,
-                                    marks = {i: "{}".format(i) for i in ["blah","blubb"]},
-                                    min = 10,
-                                    max = 40,
-                                    step = 10,
-                                    value = 10)
-                ]), id=f"collapse-{i}"
-            )       
-        ])
+def make_items(acc_str_list, acc_slider_list):
+    card_list = []
+    for acc_str, acc_slider in zip(acc_str_list, acc_slider_list):
+        card_list.append(dbc.Card(
+            [
+                dbc.CardHeader(
+                        dbc.Row([
+                            html.Span(id=f"spandot-{acc_str}",
+                                      style={"height": "15px", 
+                                             "width": "15px", 
+                                             "background-color": "#bbb", 
+                                             "border-radius": "50%",
+                                             "padding-left": 20
+                                             }
+                                     ),
+                        dbc.Button(
+                            f"{acc_str}",
+                            color="link",
+                            id=f"group-{acc_str}-toggle",
+                            style={"padding-top":10}
+
+                            )
+                        ],style={"display":"inline-flex", 
+                                 "align-items":"center",
+                                 "padding-left":20} 
+                        ) 
+                    ),
+
+
+                dbc.Collapse(
+                    html.Div(children=[dbc.Col(
+                                dcc.Slider(
+                                        id = f"slider-{acc_str}",
+                                        updatemode = "drag",
+                                        vertical = True,
+                                        step=None,
+                                        marks = {index: {"label":"{}".format(name),
+                                                         "style": {"color": "#2AA198"}
+                                                        } for index,name in enumerate(acc_slider)},
+                                        min=0,
+                                        max=len(acc_slider)-1,
+                                        value=len(acc_slider)-1,
+                                        verticalHeight=len(acc_slider)*50)
+                            ),
+                            dbc.Col(html.H5("blah"), id=f"slider-content-{acc_str}")],
+                            style={"padding":10, "padding-left":20}), id=f"collapse-{acc_str}"       
+                )
+            ])
+    )
+         
+    return card_list
             
-            
-def apply_layout(fig):
-    
-    fig.update_layout(height=1250, title_text="Bitcoin Price Chart against different Indicators")
-    layout = fig["layout"]
-    layout["paper_bgcolor"] = "#002b36"   
-    layout["plot_bgcolor"] = "#1f2630"
-    layout["font"]["color"] = "#2cfec1"
-    layout["title"]["font"]["color"] = "#2cfec1"
-    layout["xaxis"]["tickfont"]["color"] = "#2cfec1"
-    layout["yaxis"]["tickfont"]["color"] = "#2cfec1"
-    layout["xaxis"]["gridcolor"] = "#5b5b5b"
-    layout["yaxis"]["gridcolor"] = "#5b5b5b"
-    layout["margin"]["t"] = 75
-    layout["margin"]["r"] = 0
-    layout["margin"]["b"] = 0
-    layout["margin"]["l"] = 0
-
-    return fig
-
-
-def exploratory_plot():
-    fig = make_subplots(
-                        rows=4, 
-                        cols=1, 
-                        shared_xaxes=True, 
-                        vertical_spacing=0.08,
-                        subplot_titles=("Bitcoin Historic Price Chart with Bollinger Bands (30-day)", 
-                                        "Other Normalized Stock Price Historic Charts", 
-                                        "Historic Google Trends", 
-                                        "Historic Sentiments Twitter")
-                        )
-
-    df = do.chart_df
-    
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['bitcoin_Price'],
-                             name="BTC Adjusted Close"), row=1, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['bitcoin_30_day_ma'],
-                             name="BTC 30 Day Moving Average"), row=1, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['bitcoin_boll_upp'],
-                             fill='tonexty',
-                             fillcolor='rgba(231,107,243,0.2)',
-                             line=dict(color='rgba(255,255,255,0)'),
-                             name="BTC Upper Bollinger Band"), row=1, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['bitcoin_boll_low'],
-                             fill='tonexty',
-                             fillcolor='rgba(231,50,243,0.2)',
-                             line=dict(color='rgba(255,255,255,0)'),
-                             name="BTC Lower Bollinger Band"), row=1, col=1)
-
-
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['sp500_Price_norm'],
-                             name="SP500 Normed Close"), row=2, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['dax_Price_norm'],
-                             name="DAX Normed Close"), row=2, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['googl_Price_norm'],
-                             name="GOOGLE Normed Close"), row=2, col=1)
-    
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['gold_Price_norm'],
-                             name="GOLD Normed Close"), row=2, col=1)
-    
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['amazon_Price_norm'],
-                             name="AMAZON Normed Close"), row=2, col=1)
-    
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['alibaba_Price_norm'],
-                             name="ALIBABA Normed Close"), row=2, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index,
-                             y=df["bitcoin_Google_Trends"],
-                             name="'Bitcoin' Google Trends"), row=3, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index,
-                             y=df["trading_Google_Trends"],
-                             name="'Trading' Google Trends"), row=3, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index,
-                             y=df["cryptocurrency_Google_Trends"],
-                             name="'Cryptocurrency' Google Trends"), row=3, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index,
-                             y=df["bitcoin_quot_sents"],
-                             name="'Bitcoin' Sentiments"), row=4, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index,
-                             y=df["economy_quot_sents"],
-                             name="'#economy' Sentiments"), row=4, col=1)
-    
-    fig.update_yaxes(title_text="Absolute Price in $", row=1, col=1)
-    fig.update_yaxes(title_text="Normalized Price", row=2, col=1)
-    fig.update_yaxes(title_text="Number of Query per day", row=3, col=1)
-    fig.update_yaxes(title_text="Normalized Sentiment Quotient Value", row=4, col=1)
-
-
-    return apply_layout(fig)
-
-
-exploratory_fig = exploratory_plot()
-
+exploratory_fig = ph.exploratory_plot(do.apply_boll_bands("bitcoin_hist",
+                                                          append_chart=False), title="", dash=True)
+corr_01_matrix_plot = ph.plot_val_heatmap(
+                        data_prep_helper.ValidateChartData(chart_col="Price").chart_df.corr(), title="", dash=True)
 # NAVBAR always on top of website
 NAVBAR = dbc.Navbar(
     children=[
@@ -241,23 +157,20 @@ LEFT_COLUMN = dbc.Jumbotron(
     [
         html.H4(children="User Selection", className="display-5"),
         html.Hr(className="my-2"),
-        html.Div([
-                    make_item("View Data"), 
-                    make_item("Correlation Analysis"), 
-                    make_item("Causality Analysis")], className="accordion"),   
+        html.Div(make_items(acc_str_list, acc_slider_list), className="accordion"),   
     ]
 )
 
 RIGHT_COLUMN = html.Div(id="right_column", children=[dcc.Loading(id="right_column_loading")])
 
 EXP_CHART_PLOT = [dbc.CardHeader(html.H5("Historic Input Datasets")),
-              dbc.CardBody(dcc.Loading(dcc.Graph(id="chart_plot",
+              dbc.CardBody(dcc.Loading(dcc.Graph(id="exp_chart_plot",
                            figure=exploratory_fig)))
              ]
 
-CORR_CHART_PLOT = [dbc.CardHeader(html.H5("Historic Input Datasets")),
-              dbc.CardBody(dcc.Loading(dcc.Graph(id="chart_plot",
-                           figure=exploratory_fig)))
+CORR_01_CHART_PLOT = [dbc.CardHeader(html.H5("Correlation Matrix for all Input Time Series")),
+              dbc.CardBody(dcc.Loading(dcc.Graph(id="corr_01_matrix_plot",
+                           figure=corr_01_matrix_plot)))
              ]
 
 TABLE_VIEW = [dbc.CardHeader(html.H5("10 Most Similiar Users")),
@@ -298,29 +211,34 @@ app.scripts.config.serve_locally = True
 
 server = app.server
 
+acc_input = [Input(f"group-{i}-toggle", "n_clicks") for i in acc_str_list]
+acc_input.extend([Input(f"slider-{i}", "value") for i in acc_str_list])
+
 
 @app.callback(
     Output("right_column_loading", "children"),
-    [Input(f"group-{i}-toggle", "n_clicks") for i in acc_str],
+    acc_input,
     [State("right_column_loading", "children")]
 )    
-def show_plot(acc_01, acc_02, acc_03, figure):
+def show_plot(acc_01, acc_02, acc_03, 
+              sli_01, sli_02, sli_03, figure):
     ctx = dash.callback_context
 
     if not ctx.triggered:
         return ""
     else:
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-
-    if (acc_str[0] in button_id):
+        print(button_id)
+    if (acc_str_list[0] in button_id):
         return EXP_CHART_PLOT
-    elif (acc_str[1] in button_id):
-        return CORR_CHART_PLOT
+    elif (acc_str_list[1] in button_id):
+        return CORR_01_CHART_PLOT
+
     
 @app.callback(
-    [Output(f"collapse-{i}", "is_open") for i in acc_str],
-    [Input(f"group-{i}-toggle", "n_clicks") for i in acc_str],
-    [State(f"collapse-{i}", "is_open") for i in acc_str],
+    [Output(f"collapse-{i}", "is_open") for i in acc_str_list],
+    [Input(f"group-{i}-toggle", "n_clicks") for i in acc_str_list],
+    [State(f"collapse-{i}", "is_open") for i in acc_str_list],
 )
 def toggle_accordion(n1, n2, n3, is_open1, is_open2, is_open3):
     ctx = dash.callback_context
@@ -330,14 +248,49 @@ def toggle_accordion(n1, n2, n3, is_open1, is_open2, is_open3):
     else:
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    if (acc_str[0] in button_id) and n1:
+    if (acc_str_list[0] in button_id) and n1:
         return not is_open1, False, False
-    elif (acc_str[1] in button_id) and n2:
+    elif (acc_str_list[1] in button_id) and n2:
         return False, not is_open2, False
-    elif (acc_str[2] in button_id) and n3:
+    elif (acc_str_list[2] in button_id) and n3:
         return False, False, not is_open3
     return False, False, False        
 
-             
+
+@app.callback(
+    [Output(f"spandot-{i}", "style") for i in acc_str_list],
+    [Input(f"group-{i}-toggle", "n_clicks") for i in acc_str_list],
+    [State(f"spandot-{i}", "style") for i in acc_str_list],
+)
+def toggle_active_dot(n1, n2, n3, active1, active2, active3):
+    
+    sty_na={"height": "15px", 
+           "width": "15px", 
+           "background-color": "#bbb", 
+           "border-radius": "50%",
+            }
+    
+    sty_a={"height": "15px", 
+           "width": "15px", 
+           "background-color": "#00FF00", 
+           "border-radius": "50%",
+            }
+    
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        return ""
+    else:
+        button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    if (acc_str_list[0] in button_id) and n1:
+        return sty_a, sty_na, sty_na
+    elif (acc_str_list[1] in button_id) and n2:
+        return sty_na, sty_a, sty_na
+    elif (acc_str_list[2] in button_id) and n3:
+        return sty_na, sty_na, sty_a
+    return sty_na, sty_na, sty_na 
+           
+
 if __name__ == "__main__":
     app.run_server(debug=True,  port=8050, host="0.0.0.0")

@@ -92,7 +92,7 @@ class ChartData():
         if append_chart:
             self.append_to_chart_df(df[["30_day_ma", "30_day_std", "boll_upp", "boll_low"]], prefix)
         else:
-            return df
+            return self.append_to_chart_df(df[["30_day_ma", "30_day_std", "boll_upp", "boll_low"]], prefix, inplace=False)
         
     def prep_charts(self, chart_df_str, norm=False):
         try:
@@ -181,10 +181,13 @@ class ChartData():
         self.chart_df = self.chart_df.resample('D').interpolate()
 
             
-    def append_to_chart_df(self, append_df, prefix_name, right_key="Date"):
+    def append_to_chart_df(self, append_df, prefix_name, right_key="Date", inplace=False):
         
         append_df.columns = ["{}_{}".format(prefix_name, col) for col in append_df.columns]
-        self.chart_df = self.chart_df.merge(append_df, left_index=True, right_index=True)
+        if not inplace:
+            return self.chart_df.merge(append_df, left_index=True, right_index=True)
+        else:
+            self.chart_df = self.chart_df.merge(append_df, left_index=True, right_index=True)
         
 
 class ShiftChartData(ChartData):
