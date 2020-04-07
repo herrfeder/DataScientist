@@ -23,6 +23,7 @@ def apply_layout(fig, title="", height=1250):
 
 
 def exploratory_plot(df, title="",dash=False):
+
     fig = make_subplots(
                         rows=4, 
                         cols=1, 
@@ -135,3 +136,12 @@ def plot_val_heatmap(df, title="", dash=False):
         return apply_layout(fig, title, height=800)
     else:
         fig.show()
+        
+        
+def return_shift_corr(do, fixed="bitcoin_Price", shift=-30, dash=False):
+    
+    do.fixed_cols = fixed
+    corr = do.single_shift(shift).corr()
+    
+    return plot_val_heatmap(corr, dash=True)
+    

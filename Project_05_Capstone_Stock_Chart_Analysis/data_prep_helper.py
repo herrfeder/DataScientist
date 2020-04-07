@@ -209,15 +209,16 @@ class ShiftChartData(ChartData):
     
     
     def check_fixed_cols(self, fixed_cols):
-        if len(set(fixed_cols).intersection(self.chart_df.columns)) == len(fixed_cols):
-            print("This Column doesn't exist in chart_df, using first column instead")
-            return self.chart_df.columns[0]
+        if not len(set(fixed_cols).intersection(set(self.chart_df.columns))) == len(fixed_cols):
+            print("This Column {} doesn't exist in chart_df, using first column instead".format(fixed_cols))
+            return [self.chart_df.columns[0]]
         else:
             return fixed_cols
     
     def get_shift_cols(self):
         cols = list(self.chart_df.columns)
-        for fix_col in self.fixed_cols:
+        for fix_col in self._fixed_cols:
+            print(fix_col)
             cols.remove(fix_col)
         
         return cols
@@ -363,12 +364,10 @@ class ShiftChartData(ChartData):
         return ShiftChartData.get_most_causal_cols(df, past)
 
             
-class ValidateChartData(ChartData):
+class ValidateChartData(ShiftChartData):
     def __init__(self, fixed_cols="bitcoin_Price", window_size=30, chart_col="Price"):
-        super().__init__(window_size, chart_col)    
-        
-        self._fixed_cols = fixed_cols
-       
+        super().__init__(fixed_cols, window_size, chart_col)    
+               
     
     def gen_return_splits(self, splits=6, split_size=300, data_len=1800, past="all"):
         
