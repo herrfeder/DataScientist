@@ -138,6 +138,10 @@ def return_season_plot(df, column, title="", dash=False):
                              y=result.seasonal,
                              name="Seasonality"), row=3, col=1)
     
+    fig.update_yaxes(title_text="Trend Of Chart", row=1, col=1)
+    fig.update_yaxes(title_text="Residuals Of Chart", row=2, col=1)
+    fig.update_yaxes(title_text="Seasonality Of Chart", row=3, col=1)
+    
     
     if dash:
         return apply_layout(fig, title, height=800)
