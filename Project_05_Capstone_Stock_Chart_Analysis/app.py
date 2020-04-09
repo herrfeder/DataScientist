@@ -33,45 +33,25 @@ for col in BASE_COLUMNS:
                                 "value": col,
                                 })
 
-acc_str_list = ["View Data", 
-                "Correlation Analysis",
-                "Causality Analysis"]
+acc_str_list = ["A Introduction",
+                "B View Data", 
+                "C Correlation Analysis",
+                "D Causality Analysis",
+                "E Model Evaluation",
+                "F Forecast"]
 
-acc_slider_list = [["blah","blubb"],
+acc_slider_list = [["Introduction", "Resources"],
+                   ["View Data","Conclusions"],
                    ["Simple Correlation", "Correlation Timeshift", "Conclusions"],
-                   ["Granger Causality", "Conclusions"]]
+                   ["Seasonal Analysis", "Granger Causality", "Conclusions"],
+                   ["ARIMAX", "VAR", "GRU"],
+                   ["Forecast", "Chances and next Steps"]]
     
 # Load data
 
-APP_PATH = str(pathlib.Path(__file__).parent.resolve())
+APP_PATH = pathlib.Path(__file__).parent.resolve()
 
-DEFAULT_COLORSCALE = [
-"#3b3b3d",
-"#8000ff",
-"#6629fe",
-"#4c50fc",
-"#3079f7",
-"#169bf2",
-"#07bbea",
-"#20d5e1",
-"#3dead5",
-"#56f7ca",
-"#72febb",
-"#8cfead",
-"#a8f79c",
-"#c2ea8c",
-"#ded579",
-"#f9bb66",
-"#ff9b52",
-"#ff793e",
-"#ff5029",
-"#ff2914",
-"#ff0000",
-]
-
-
-DEFAULT_OPACITY = 0.5
-
+GRANGER_PATH = APP_PATH.joinpath("data/granger_causality.csv")
 
 def make_items(acc_str_list, acc_slider_list):
     card_list = []
@@ -126,7 +106,8 @@ def make_items(acc_str_list, acc_slider_list):
     )
          
     return card_list
-            
+
+
 exploratory_fig = ph.exploratory_plot(do_big.apply_boll_bands("bitcoin_hist",
                                                               append_chart=False), title="", dash=True)
 corr_01_matrix_plot = ph.plot_val_heatmap(do_small.chart_df.corr(), 
@@ -169,6 +150,38 @@ NAVBAR = dbc.Navbar(
 )
 
 
+
+
+LEFT_COLUMN = dbc.Jumbotron(
+    [
+        html.H4(children="User Selection", className="display-5"),
+        html.Hr(className="my-2"),
+        html.Div(make_items(acc_str_list, acc_slider_list), className="accordion"),   
+    ]
+)
+
+RIGHT_COLUMN = html.Div(id="right_column", children=[dcc.Loading(id="right_column_loading")])
+
+
+### A INTRODUCTION ###
+
+INTRODUCTION = html.Div(dcc.Markdown(conclusion_texts.introduction), id="introduction")
+
+RESOURCES = ""
+
+
+### B VIEW DATA ###
+
+EXP_CHART_PLOT = [dbc.CardHeader(html.H5("Historic Input Datasets")),
+              dbc.CardBody(dcc.Loading(dcc.Graph(id="exp_chart_plot",
+                           figure=exploratory_fig)))
+             ]
+
+VIEW_CONCLUSIONS = ""
+
+
+### C CORRELATION ANALYSIS ###
+
 CORR_SHIFT_DROPDOWN = html.Div([
                         dcc.Dropdown(id='corr_shift_dropdown',
                                      options=column_small_labels,
@@ -189,21 +202,6 @@ CORR_SHIFT_SLIDER = html.Div(children=[
                             step=1,
                             value=-30,),
                     ],style={"width":"40%"})
-
-LEFT_COLUMN = dbc.Jumbotron(
-    [
-        html.H4(children="User Selection", className="display-5"),
-        html.Hr(className="my-2"),
-        html.Div(make_items(acc_str_list, acc_slider_list), className="accordion"),   
-    ]
-)
-
-RIGHT_COLUMN = html.Div(id="right_column", children=[dcc.Loading(id="right_column_loading")])
-
-EXP_CHART_PLOT = [dbc.CardHeader(html.H5("Historic Input Datasets")),
-              dbc.CardBody(dcc.Loading(dcc.Graph(id="exp_chart_plot",
-                           figure=exploratory_fig)))
-             ]
 
 CORR_01_CHART_PLOT = [dbc.CardHeader(html.H5("Correlation Matrix for all Input Time Series")),
               dbc.CardBody(dcc.Loading(dcc.Graph(id="corr_01_matrix_plot",
@@ -230,13 +228,62 @@ CORR_02_CHART_PLOT = [dbc.CardHeader(html.H5("Correlation Matrix with User-Defin
                                 
                                           dcc.Loading(
                                               dcc.Graph(id="corr_shift_matrix_plot",
-                                                        figure=ph.return_shift_corr(do_small,"bitcoin_Price", -30, dash=True))
+                                                        figure=ph.return_shift_corr(do_small,
+                                                                                    "bitcoin_Price", 
+                                                                                    -30, 
+                                                                                    dash=True))
                                           )             
                             ])
                         )
              ]
 
 CORR_CONCLUSIONS = html.Div(dcc.Markdown(conclusion_texts.correlation_conclusion), id="corr-conclusions")
+
+
+### D CAUSALITY ANALYSIS ###
+
+CAUS_SEASONAL_DROPDOWN = html.Div([
+                        dcc.Dropdown(id='caus_seasonal_dropdown',
+                                     options=column_small_labels,
+                                     value="bitcoin_Price")
+                     ,], style={"width":"20%"})
+
+
+
+CAUS_SEASONAL_PLOT = [dbc.CardHeader(html.H5("Seasonal Decomposition")),
+              dbc.CardBody(html.Div(children=[
+                                        dbc.Row(children=[
+                                                html.Label("Seasonal Decomposition for:",
+                                                    style={"padding-left":20,
+                                                           "padding": 10}), 
+                                                CAUS_SEASONAL_DROPDOWN],
+                                            align="center",
+                                            style={"background-color": "#073642", "border-radius": "0.3rem"}),
+                                            
+                                            dcc.Loading(
+                                                dcc.Graph(id="caus_seasonal_plot",
+                                                          figure=ph.return_season_plot(do_small.chart_df, 
+                                                                                       "bitcoin_Price", 
+                                                                                       title="", 
+                                                                                       dash=True)))
+                                         ]))
+                     ]
+
+CAUS_GRANGER_PLOT = [dbc.CardHeader(html.H5("Granger Causality with Time Lag of 30 Days")),
+                     dbc.CardBody(html.Div(
+                                            dcc.Loading(
+                                                dcc.Graph(id="caus_granger_plot",
+                                                          figure=ph.return_granger_plot(GRANGER_PATH,  
+                                                                                       title="",
+                                                                                       colormap="viridis_r",
+                                                                                       colorbar="P-Value"
+                                                                                       dash=True)))
+                                         ))]
+
+
+### E MODEL EVALUATION ###
+
+### F FORECAST ###
 
 TABLE_VIEW = [dbc.CardHeader(html.H5("10 Most Similiar Users")),
               dbc.CardBody(dcc.Loading(dash_table.DataTable(id="usertableview")))
@@ -277,6 +324,10 @@ app.scripts.config.serve_locally = True
 
 server = app.server
 
+
+
+
+
 acc_input = [Input(f"group-{i}-toggle", "n_clicks") for i in acc_str_list]
 acc_input.extend([Input(f"slider-{i}", "value") for i in acc_str_list])
 
@@ -286,27 +337,52 @@ acc_input.extend([Input(f"slider-{i}", "value") for i in acc_str_list])
     acc_input,
     [State("right_column_loading", "children")],
 )    
-def show_plot(acc_01, acc_02, acc_03, 
-              sli_01, sli_02, sli_03, 
+def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
+              sli_01, sli_02, sli_03, sli_04, sli_05, sli_06,
               figure):
     ctx = dash.callback_context
 
     if not ctx.triggered:
-        return "",""
+        return ""
     else:
         element_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
     if (acc_str_list[0] in element_id):
-        return EXP_CHART_PLOT
+        if sli_01 == 1:
+            return INTRODUCTION
+        if sli_01 == 0:
+            return "" # needs to be filled with RESOURCES
     elif (acc_str_list[1] in element_id):
-        if sli_02 == 2:
+        if sli_02 == 1:
+            return EXP_CHART_PLOT
+        if sli_02 == 0:
+            return "" # needs to be filled with VIEW_CONCLUSIONS
+    elif (acc_str_list[2] in element_id):
+        if sli_03 == 2:
             return CORR_01_CHART_PLOT
-        elif sli_02 == 1:
+        elif sli_03 == 1:
             return CORR_02_CHART_PLOT
-        elif sli_02 == 0:
+        elif sli_03 == 0:
             return CORR_CONCLUSIONS
+    elif (acc_str_list[3] in element_id):
+        if sli_04 == 2:
+            return CAUS_SEASONAL_PLOT
+        if sli_04 == 1:
+            return CAUS_GRANGER_PLOT
+        if sli_04 == 0:
+            return ""
 
-        
+
+@app.callback(
+    Output("caus_seasonal_plot", "figure"),
+    [Input("caus_seasonal_dropdown", "value")],
+    [State("caus_seasonal_plot", "figure")]
+)
+def ret_caus_seasonal_plot(dropdown, figure):
+    
+    return ph.return_season_plot(do_small.chart_df, dropdown, title="", dash=True)
+    
+    
 @app.callback(
     Output("corr_shift_matrix_plot", "figure"),
     [Input("corr_shift_button", "n_clicks")],
@@ -314,7 +390,7 @@ def show_plot(acc_01, acc_02, acc_03,
 )
 def ret_corr_shift_plot(n, dropdown, slider):
     
-    return ph.return_shift_corr(do_small, dropdown, slider, dash=True)
+    return ph.return_shift_corr(do_small, dropdown, slider, output="single",dash=True)
     
     
 @app.callback(
@@ -322,7 +398,8 @@ def ret_corr_shift_plot(n, dropdown, slider):
     [Input(f"group-{i}-toggle", "n_clicks") for i in acc_str_list],
     [State(f"collapse-{i}", "is_open") for i in acc_str_list],
 )
-def toggle_accordion(n1, n2, n3, is_open1, is_open2, is_open3):
+def toggle_accordion(n1, n2, n3, n4, n5, n6,
+                     is_open1, is_open2, is_open3, is_open4, is_open5, is_open6):
     ctx = dash.callback_context
 
     if not ctx.triggered:
@@ -331,12 +408,19 @@ def toggle_accordion(n1, n2, n3, is_open1, is_open2, is_open3):
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
     if (acc_str_list[0] in button_id) and n1:
-        return not is_open1, False, False
+        return not is_open1, False, False, False, False, False
     elif (acc_str_list[1] in button_id) and n2:
-        return False, not is_open2, False
+        return False, not is_open2, False, False, False, False
     elif (acc_str_list[2] in button_id) and n3:
-        return False, False, not is_open3
-    return False, False, False        
+        return False, False, not is_open3, False, False, False
+    elif (acc_str_list[3] in button_id) and n4:
+        return False, False, False, not is_open4, False, False
+    elif (acc_str_list[4] in button_id) and n5:
+        return False, False, False, False, not is_open5, False
+    elif (acc_str_list[5] in button_id) and n6:
+        return False, False, False, False, False, not is_open6
+    
+    return False, False, False, False, False, False        
 
 
 
@@ -351,26 +435,41 @@ state.extend([State(f"slidersub-{i}", "children") for i in acc_str_list])
     acc_input,
     state,
 )    
-def update_sub(acc_01, acc_02, acc_03, 
-              sli_01, sli_02, sli_03, 
-              slisub_01, slisub_02, slisub_03):
+def update_sub(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
+              sli_01, sli_02, sli_03, sli_04, sli_05, sli_06,
+              slisub_01, slisub_02, slisub_03, slisub_04, slisub_05, slisub_06):
 
     ctx = dash.callback_context
 
     if not ctx.triggered:
-        return "",""
+        return "", "", "", "", "", ""
     else:
         element_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
+        
     if (acc_str_list[0] in element_id):
-        return "Show all Input Time Series","",""
+        return "", "", "", "", "", ""
     elif (acc_str_list[1] in element_id):
-        if sli_02 == 2:
-            return "","Simple Correlation between all Input Time Series",""
-        elif sli_02 == 1:
-            return "","Correlation between timeshifted Time Series",""
+        if sli_02 == 1:
+            return "Show all Input Time Series", "", "", "", "", ""
         elif sli_02 == 0:
-            return "","Conclusions resulting from Correlation Analysis",""
+            return "Show all Input Time Series","","", "", "", ""
+    elif (acc_str_list[2] in element_id):
+        if sli_03 == 2:
+            return "","Simple Correlation between all Input Time Series", "", "", "", ""
+        elif sli_03 == 1:
+            return "","Correlation between timeshifted Time Series", "", "", "", ""
+        elif sli_03 == 0:
+            return "","Conclusions resulting from Correlation Analysis", "", "", "", ""
+    elif (acc_str_list[3] in element_id):
+        if sli_04 == 1:
+            return "","","blah", "", "", ""
+        elif sli_04 == 0:
+            return "","","blubb", "", "", ""
+    elif (acc_str_list[4] in element_id):
+        return "", "", "", "", "", ""
+    elif (acc_str_list[5] in element_id):
+        return "", "", "", "", "", ""
 
     
     
@@ -379,7 +478,8 @@ def update_sub(acc_01, acc_02, acc_03,
     [Input(f"group-{i}-toggle", "n_clicks") for i in acc_str_list],
     [State(f"spandot-{i}", "style") for i in acc_str_list],
 )
-def toggle_active_dot(n1, n2, n3, active1, active2, active3):
+def toggle_active_dot(n1, n2, n3, n4, n5, n6, 
+                      active1, active2, active3, active4, active5, active6):
     
     sty_na={"height": "15px", 
            "width": "15px", 
@@ -401,12 +501,19 @@ def toggle_active_dot(n1, n2, n3, active1, active2, active3):
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
     if (acc_str_list[0] in button_id) and n1:
-        return sty_a, sty_na, sty_na
+        return sty_a, sty_na, sty_na, sty_na, sty_na, sty_na
     elif (acc_str_list[1] in button_id) and n2:
-        return sty_na, sty_a, sty_na
+        return sty_na, sty_a, sty_na, sty_na, sty_na, sty_na
     elif (acc_str_list[2] in button_id) and n3:
-        return sty_na, sty_na, sty_a
-    return sty_na, sty_na, sty_na 
+        return sty_na, sty_na, sty_a, sty_na, sty_na, sty_na
+    elif (acc_str_list[3] in button_id) and n4:
+        return sty_na, sty_na, sty_na, sty_a, sty_na, sty_na 
+    elif (acc_str_list[4] in button_id) and n5:
+        return sty_na, sty_na, sty_na, sty_na, sty_a, sty_na 
+    elif (acc_str_list[5] in button_id) and n6:
+        return sty_na, sty_na, sty_na, sty_na, sty_na, sty_a
+    
+    return sty_na, sty_na, sty_na, sty_na, sty_na, sty_na 
            
 
 if __name__ == "__main__":

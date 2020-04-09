@@ -1,5 +1,8 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from statsmodels.tsa.seasonal import seasonal_decompose
+import pandas as pd
+import numpy as np
 
 
 def apply_layout(fig, title="", height=1250):
@@ -57,31 +60,26 @@ def exploratory_plot(df, title="",dash=False):
                              line=dict(color='rgba(255,255,255,0)'),
                              name="BTC Lower Bollinger Band"), row=1, col=1)
 
-
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['sp500_Price_norm'],
-                             name="SP500 Normed Close"), row=2, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['dax_Price_norm'],
-                             name="DAX Normed Close"), row=2, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['googl_Price_norm'],
-                             name="GOOGLE Normed Close"), row=2, col=1)
+    y_2_list = ["sp500_Price_norm", 
+                "dax_Price_norm",
+                "googl_Price_norm",
+                "gold_Price_norm",
+                "amazon_Price_norm",
+                "alibaba_Price_norm"]
     
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['gold_Price_norm'],
-                             name="GOLD Normed Close"), row=2, col=1)
+    name_2_list = ["SP500 Normed Close",
+                   "DAX Normed Close",
+                   "GOOGLE Normed Close",
+                   "GOLD Normed Close",
+                   "AMAZON Normed Close",
+                   "ALIBABA Normed Close"]
     
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['amazon_Price_norm'],
-                             name="AMAZON Normed Close"), row=2, col=1)
-    
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['alibaba_Price_norm'],
-                             name="ALIBABA Normed Close"), row=2, col=1)
+    for y, name in zip(y_2_list, name_2_list):
+        fig.add_trace(go.Scatter(x=df.index, 
+                                y=df[y],
+                                name=name), row=2, col=1)
 
+   
     fig.add_trace(go.Scatter(x=df.index,
                              y=df["bitcoin_Google_Trends"],
                              name="'Bitcoin' Google Trends"), row=3, col=1)
@@ -112,8 +110,42 @@ def exploratory_plot(df, title="",dash=False):
     else:
         fig.show()
 
+        
+def return_season_plot(df, column, title="", dash=False):
+    
+    series = pd.DataFrame(data=df[column].values, 
+                          index=df.index, 
+                          columns =[column]).dropna()
 
-def plot_val_heatmap(df, title="", dash=False):
+    result = seasonal_decompose(series.values, model='multiplicative', period=30)
+    
+    fig = make_subplots(
+                        rows=3, 
+                        cols=1, 
+                        shared_xaxes=True, 
+                        vertical_spacing=0.08,
+                        )
+    
+    fig.add_trace(go.Scatter(x=df.index, 
+                         y=result.trend,
+                         name="Trend"), row=1, col=1)
+
+    fig.add_trace(go.Scatter(x=df.index, 
+                         y=result.resid,
+                         name="Residuals"), row=2, col=1)
+
+    fig.add_trace(go.Scatter(x=df.index, 
+                             y=result.seasonal,
+                             name="Seasonality"), row=3, col=1)
+    
+    
+    if dash:
+        return apply_layout(fig, title, height=800)
+    else:
+        fig.show()
+        
+
+def plot_val_heatmap(df, title="", height=1000, colormap="viridis", colorbar="Corr Coefficient",dash=False):
     
     coordinates = df.values.tolist()
     columns = list(df.columns)
@@ -124,7 +156,8 @@ def plot_val_heatmap(df, title="", dash=False):
             "x": columns, 
             "y": index, 
             "z": coordinates,
-            "colorscale": 'viridis'
+            "colorscale": colormap,
+            "colorbar": {"title": "P-Value"}
             }
 
     data = trace1
@@ -138,10 +171,28 @@ def plot_val_heatmap(df, title="", dash=False):
         fig.show()
         
         
-def return_shift_corr(do, fixed="bitcoin_Price", shift=-30, dash=False):
+def return_shift_corr(do, fixed="bitcoin_Price", shift=-30, output="multi",dash=False):
     
     do.fixed_cols = fixed
     corr = do.single_shift(shift).corr()
     
-    return plot_val_heatmap(corr, dash=True)
+    if output=="single":
+        corr = corr[corr.index == fixed]
+        return plot_val_heatmap(corr, height=200, dash=True)
+    else:
+        return plot_val_heatmap(corr, dash=True)
     
+
+def return_granger_plot(df_path, title="", height=1000, colormap="viridis",dash=False):
+    
+    granger_df = pd.read_csv(df_path)
+    granger_df.set_index("Unnamed: 0", inplace=True)
+    granger_df[granger_df > 0.06] = np.nan
+    return plot_val_heatmap(granger_df, 
+                            title=title, 
+                            height=height, 
+                            colormap=colormap,
+                            colorbar="P-Value",
+                            dash=dash)
+    
+
