@@ -270,14 +270,22 @@ CAUS_SEASONAL_PLOT = [dbc.CardHeader(html.H5("Seasonal Decomposition")),
                      ]
 
 CAUS_GRANGER_PLOT = [dbc.CardHeader(html.H5("Granger Causality with Time Lag of 30 Days")),
-                     dbc.CardBody(html.Div(
+                     dbc.CardBody(
+                         html.Div(children=[
+                             dbc.Row(children=[
+                                                html.Label("Seasonal Decomposition for:",
+                                                    style={"padding-left":20,
+                                                           "padding": 10}), 
+                                                CAUS_SEASONAL_DROPDOWN],
+                                            align="center",
+                                            style={"background-color": "#073642", "border-radius": "0.3rem"}),
                                             dcc.Loading(
                                                 dcc.Graph(id="caus_granger_plot",
                                                           figure=ph.return_granger_plot(GRANGER_PATH,  
                                                                                        title="",
                                                                                        colormap="viridis_r",
-                                                                                       colorbar="P-Value"
                                                                                        dash=True)))
+                         ]
                                          ))]
 
 

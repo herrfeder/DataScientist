@@ -1,3 +1,15 @@
+granger_prob_expl = """
+Granger Causality tests on a Null hypothesis:
+
+  * __Null Hypothesis__: X does not granger cause Y or the other way
+  
+>  If P value < Significance level (0.05), then Null hypothesis would be rejected.
+   Example: __cryptocurrency_Google_Trends_x__ does granger cause __bitcoin_Price_y__ 
+
+>  If P value > Significance level, then Null hypothesis cannot be rejected.
+   Example: __alibaba_Price_x__ doesn't granger cause __gold_Price_y__
+"""
+
 introduction = """
 # Initial Data Preprocessing and Correlative Analysis
 
