@@ -4,7 +4,8 @@ debug = debugger.Pdb().set_trace
 import pathlib
 import os
 import sys
-
+import numpy as np
+import pickle
 
 
 class ErrorComparer():
@@ -249,7 +250,7 @@ class ShiftChartData(ChartData):
                     'alibaba_Price_prev_week', 'bitcoin_Low_prev_month',
                     'bitcoin_Low_prev_week', 'bitcoin_High_prev_month',
                     'bitcoin_High_prev_week', 'cryptocurrency_Google_Trends_prev_week',
-                    'bitcoin_Price_prev_month', 'cryptocurrency_Google_Trends',
+                    'bitcoin_Price_prev_month', 'bitcoin_Price_prev_week','cryptocurrency_Google_Trends',
                     'bitcoin_Low', 'alibaba_Price',
                     'alibaba_High', 'alibaba_Low',
                     'cryptocurrency_Google_Trends_prev_month', 'bitcoin_Google_Trends',
@@ -362,16 +363,23 @@ class ShiftChartData(ChartData):
             df = df.iloc[31:, :]
         
         return ShiftChartData.get_most_causal_cols(df, past)
-
-            
-class ValidateChartData(ShiftChartData):
-    def __init__(self, fixed_cols="bitcoin_Price", window_size=30, chart_col="Price"):
-        super().__init__(fixed_cols, window_size, chart_col)    
-               
     
-    def gen_return_splits(self, splits=6, split_size=300, data_len=1800, past="all"):
+    def return_train_test(self, split_factor=0.8, past="all", zeros="cut"):
+        train = self.chart_df[:int(split_factor*(len(self.chart_df)))]
+        test = self.chart_df[int(split_factor*(len(self.chart_df))):]
         
-        for i in range(3,6):
+        train = ShiftChartData.get_causal_const_shift(train, past=past, zeros=zeros)
+        test = ShiftChartData.get_causal_const_shift(test, past=past, zeros=zeros)
+        
+        return train, test
+    
+    
+    def gen_return_splits(self, splits=3, split_size=300, data_len=1800, past="all"):
+        start_split = int(np.round((data_len/2)/split_size))
+        end_split = start_split + splits
+        
+        
+        for i in range(start_split,end_split):
             train = self.chart_df[:i*split_size]
             test = self.chart_df[i*split_size:(i+1)*split_size]
             
@@ -379,8 +387,70 @@ class ValidateChartData(ShiftChartData):
             test = ShiftChartData.get_causal_const_shift(test, past=past, zeros="cut")
             
             yield train, test
+
+            
+class ModelData(ShiftChartData):
+    def __init__(self, 
+                 fixed_cols="bitcoin_Price", 
+                 window_size=30, 
+                 chart_col="Price", 
+                 model_path="models",
+                 opt_ari_feat=['bitcoin_Google_Trends_prev_month',
+                               'cryptocurrency_Google_Trends_prev_month',
+                               'alibaba_High_prev_month',
+                               'amazon_High_prev_month',
+                               'economy_pos_sents_prev_month']):
+        super().__init__(fixed_cols, window_size, chart_col)    
+               
+        arimax_path = self.base_path.joinpath("models/sarimax_5_feat_month.pkl")
+        self.arimax = pickle.load( open( arimax_path, "rb" ) )
+        self.opt_ari_feat = opt_ari_feat
+
+        self.train, self.test =  self.return_train_test()
+        self.test_exp = self.prep_ari_forecast()
+        
+        
+    def get_forecast_dates(self):
+        return list(self.test_exp.index.strftime("%Y-%m-%d")[30:-30])
+        
+    def prep_ari_forecast(self):
+        test_exp = self.test[self.opt_ari_feat]
+        if not "week" in str(self.opt_ari_feat):
+            shift = -30
+        else:
+            shift = -7
+        for col in self.opt_ari_feat:
+            test_exp[col] = test_exp[col].shift(shift)
+            
+        test_exp = test_exp.iloc[:shift,:]
+        
+        return test_exp
     
+    def ari_forecast(self, curr_day):
+        print(curr_day)
+        
+        
+    def cross_validate_arimax(self):
+            results = []
+            for train, test in self.gen_return_splits():
     
+                #train["economy_pos_sents_prev_month"] = train["economy_pos_sents_prev_month"].rolling(window=10,min_periods=1).mean()
+                #test["economy_pos_sents_prev_month"] = test["economy_pos_sents_prev_month"].rolling(window=10,min_periods=1).mean()
+
+                s1i1 = train['bitcoin_Price']
+                exog_s1i1 = train[features]
+                arimax = sm.tsa.statespace.SARIMAX(s1i1, 
+                                               exog=exog_s1i1,
+                                               enforce_invertibility=False, 
+                                               enforce_stationarity=False, 
+                                               freq='D').fit()
+        
+                exog = test[features]
+                forecast = arimax.get_forecast(steps=len(test), exog=exog)
+        
+    
+                results.append((valid["bitcoin_Price"], forecast.predicted_mean))
+
 ### APPLY FUNCTIONS ###
     
 def convert_values(row, col):

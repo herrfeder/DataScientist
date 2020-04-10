@@ -14,7 +14,7 @@ from multiprocessing import Pool
 import os
 
 
-do = data_prep_helper.ValidateChartData(chart_col=["Price", "High", "Low"])
+do = data_prep_helper.ShiftChartData(chart_col=["Price", "High", "Low"])
 
 df = data_prep_helper.ShiftChartData.get_causal_const_shift(do.chart_df,)
 
@@ -57,5 +57,6 @@ def feature_comb_iter(i):
     
     
 if __name__ == '__main__':
-    pool = Pool(4)           # Create a multiprocessing Pool
-    pool.map(feature_comb_iter, range(4,10))  # process range
+    #pool = Pool(4)           # Create a multiprocessing Pool
+    #pool.map(feature_comb_iter, range(4,10))  # process range
+    feature_comb_iter(6)

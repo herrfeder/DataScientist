@@ -20,11 +20,15 @@ import conclusion_texts
 from dash.dependencies import Input, Output, State
 from plotly import tools
 
-do_big = data_prep_helper.ValidateChartData(chart_col=["Price", "High", "Low", "Price_norm"])
-do_small = data_prep_helper.ValidateChartData(chart_col="Price")
+APP_PATH = pathlib.Path(__file__).parent.resolve()
+
+do_big = data_prep_helper.ModelData(chart_col=["Price", "High", "Low", "Price_norm"])
+do_small = data_prep_helper.ShiftChartData(chart_col="Price")
 
 
 BASE_COLUMNS = list(do_small.chart_df.columns)
+
+FORE_DAYS = do_big.get_forecast_dates()
 
 
 column_small_labels = []
@@ -32,6 +36,12 @@ for col in BASE_COLUMNS:
     column_small_labels.append({"label": col,
                                 "value": col,
                                 })
+    
+fore_days_labels = []
+for day in FORE_DAYS:
+    fore_days_labels.append({"label": day,
+                             "value": day})
+    
 
 acc_str_list = ["A Introduction",
                 "B View Data", 
@@ -49,7 +59,6 @@ acc_slider_list = [["Introduction", "Resources"],
     
 # Load data
 
-APP_PATH = pathlib.Path(__file__).parent.resolve()
 
 GRANGER_PATH = APP_PATH.joinpath("data/granger_causality.csv")
 
@@ -294,6 +303,43 @@ CAUS_GRANGER_PLOT = [dbc.CardHeader(html.H5("Granger Causality with Time Lag of 
 
 ### F FORECAST ###
 
+FORE_DAYS_DROPDOWN = html.Div([
+                        dcc.Dropdown(id='fore_days_dropdown',
+                                     options=fore_days_labels,
+                                     value=FORE_DAYS[0])
+                     ,], style={"width":"20%"})
+
+
+FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
+                        dbc.CardBody( 
+                            html.Div(children=[
+                                        dbc.Row(children=[
+                                            html.Label("Column to Fix:",
+                                                style={"padding-left":20,
+                                                       "padding": 10}), 
+                                            FORE_DAYS_DROPDOWN,
+                                            html.Label("Past Timeshift:",
+                                                style={"padding-left":20,
+                                                       "padding": 10}),
+                                            
+                                            dbc.Button("Run Correlation", 
+                                                       id="corr_shift_button", 
+                                                       className="btn btn-success")],
+                                            align="center",
+                                            style={"background-color": "#073642", "border-radius": "0.3rem"}),
+                                
+                                          dcc.Loading(
+                                              dcc.Graph(id="fore_plot",
+                                                        figure=ph.return_shift_corr(do_small,
+                                                                                    "bitcoin_Price", 
+                                                                                    -30, 
+                                                                                    dash=True))
+                                          )             
+                            ])
+                        )
+             ]
+
+
 TABLE_VIEW = [dbc.CardHeader(html.H5("10 Most Similiar Users")),
               dbc.CardBody(dcc.Loading(dash_table.DataTable(id="usertableview")))
                 ]
@@ -380,6 +426,9 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
             return CAUS_GRANGER_PLOT
         if sli_04 == 0:
             return ""
+        
+    elif (acc_str_list[5] in element_id):
+        return FORE_ALL
 
 
 @app.callback(
