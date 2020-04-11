@@ -25,6 +25,84 @@ def apply_layout(fig, title="", height=1250):
     return fig
 
 
+def get_ari_plot(df, fig="", title="",conf_int=False, dash=False):
+    
+    if not fig:
+        fig = make_subplots(
+                        rows=1, 
+                        cols=1, 
+                        shared_xaxes=True)
+        
+    
+    df_mean = df.predicted_mean.rolling(window=10,min_periods=1).mean()
+    
+    fig.add_trace(go.Scatter(x=df.predicted_mean.index, 
+                             y=df_mean,
+                             line=dict(color='green'),
+                             name="SARIMAX Prediction"), row=1, col=1)
+    
+    if conf_int:
+        
+        fig.add_trace(go.Scatter(x=df.predicted_mean.index, 
+                             y=df.conf_int()["lower bitcoin_Price"],
+                             fill='tonexty',
+                             fillcolor='rgba(166, 217, 193,0.2)',
+                             line=dict(color='rgba(255,255,255,0)'),
+                             name="SARIMAX Lower Confidence Interval"))
+
+
+        fig.add_trace(go.Scatter(x=df.predicted_mean.index, 
+                             y=df.conf_int()["upper bitcoin_Price"],
+                             fill='tonexty',
+                             fillcolor='rgba(166, 217, 193,0.2)',
+                             line=dict(color='rgba(255,255,255,0)'),
+                             name="SARIMAX Higher Confidence Interval"))
+        
+    
+    if dash:
+        return apply_layout(fig, title)
+    else:
+        return fig
+    
+
+def price_plot(df, fig="", title="", boll=True, dash=False, names=["BTC Adjusted Close",
+                                           "BTC 30 Day Moving Average",
+                                           "BTC Upper Bollinger Band",
+                                           "BTC Lower Bollinger Band"]):
+    if not fig:
+        fig = make_subplots(
+                        rows=1, 
+                        cols=1, 
+                        shared_xaxes=True)
+     
+    fig.add_trace(go.Scatter(x=df.index, 
+                             y=df['bitcoin_Price'],
+                             name=names[0]), row=1, col=1)
+    if boll:
+        fig.add_trace(go.Scatter(x=df.index, 
+                                 y=df['bitcoin_30_day_ma'],
+                                 name=names[1]), row=1, col=1)
+
+        fig.add_trace(go.Scatter(x=df.index, 
+                                 y=df['bitcoin_boll_upp'],
+                                 fill='tonexty',
+                                 fillcolor='rgba(231,107,243,0.2)',
+                                 line=dict(color='rgba(255,255,255,0)'),
+                                 name=names[2]), row=1, col=1)
+
+        fig.add_trace(go.Scatter(x=df.index, 
+                                 y=df['bitcoin_boll_low'],
+                                 fill='tonexty',
+                                 fillcolor='rgba(231,50,243,0.2)',
+                                 line=dict(color='rgba(255,255,255,0)'),
+                                 name=names[3]), row=1, col=1) 
+        
+    if dash:
+        return apply_layout(fig, title, height=600)
+    else:
+        return fig
+
+
 def exploratory_plot(df, title="",dash=False):
 
     fig = make_subplots(
@@ -38,27 +116,7 @@ def exploratory_plot(df, title="",dash=False):
                                         "Historic Sentiments Twitter")
                         )
     
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['bitcoin_Price'],
-                             name="BTC Adjusted Close"), row=1, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['bitcoin_30_day_ma'],
-                             name="BTC 30 Day Moving Average"), row=1, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['bitcoin_boll_upp'],
-                             fill='tonexty',
-                             fillcolor='rgba(231,107,243,0.2)',
-                             line=dict(color='rgba(255,255,255,0)'),
-                             name="BTC Upper Bollinger Band"), row=1, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index, 
-                             y=df['bitcoin_boll_low'],
-                             fill='tonexty',
-                             fillcolor='rgba(231,50,243,0.2)',
-                             line=dict(color='rgba(255,255,255,0)'),
-                             name="BTC Lower Bollinger Band"), row=1, col=1)
+    fig = price_plot(df, fig)
 
     y_2_list = ["sp500_Price_norm", 
                 "dax_Price_norm",

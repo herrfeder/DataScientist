@@ -77,9 +77,17 @@ class ChartData():
         return data_source_d
     
 
-    def apply_boll_bands(self, df_string, price_col="Price",window_size=30, append_chart=False):
+    def apply_boll_bands(self, 
+                         df_string="", 
+                         price_col="Price", 
+                         window_size=30, 
+                         append_chart=False, 
+                         ext_df=pd.DataFrame()):
         try:
-            df = self.df_d[df_string]
+            if not ext_df.empty:
+                df = ext_df
+            else:
+                df = self.df_d[df_string]
         except:
             print("Not found this DataFrame name")
         
@@ -93,7 +101,11 @@ class ChartData():
         if append_chart:
             self.append_to_chart_df(df[["30_day_ma", "30_day_std", "boll_upp", "boll_low"]], prefix)
         else:
-            return self.append_to_chart_df(df[["30_day_ma", "30_day_std", "boll_upp", "boll_low"]], prefix, inplace=False)
+            if not ext_df.empty:
+                df.columns = ["{}_{}".format(prefix, col) if not col.startswith(prefix) else col for col in df.columns]
+                return df
+            else:
+                return self.append_to_chart_df(df[["30_day_ma", "30_day_std", "boll_upp", "boll_low"]], prefix, inplace=False)
         
     def prep_charts(self, chart_df_str, norm=False):
         try:
@@ -364,9 +376,13 @@ class ShiftChartData(ChartData):
         
         return ShiftChartData.get_most_causal_cols(df, past)
     
-    def return_train_test(self, split_factor=0.8, past="all", zeros="cut"):
-        train = self.chart_df[:int(split_factor*(len(self.chart_df)))]
-        test = self.chart_df[int(split_factor*(len(self.chart_df))):]
+    def return_train_test(self, split_factor=1500, past="all", zeros="cut"):
+        if split_factor < 1:
+            train = self.chart_df[:int(split_factor*(len(self.chart_df)))]
+            test = self.chart_df[int(split_factor*(len(self.chart_df))):]
+        else: 
+            train = self.chart_df[:split_factor]
+            test = self.chart_df[split_factor:]
         
         train = ShiftChartData.get_causal_const_shift(train, past=past, zeros=zeros)
         test = ShiftChartData.get_causal_const_shift(test, past=past, zeros=zeros)
@@ -425,7 +441,15 @@ class ModelData(ShiftChartData):
     
     def ari_forecast(self, curr_day):
         curr_fore_exp = self.fore_exp[self.fore_exp.index <= curr_day]
-        curr_real_price = self.real_price[self.real_price.index <= curr_day]
+        #try:
+        #    curr_fore_exp["economy_pos_sents"] = curr_fore_exp["economy_pos_sents"].rolling(window=10,min_periods=1).mean()
+        #except:
+        #    pass
+    
+        curr_real_price = pd.DataFrame(self.real_price[self.real_price.index <= curr_day])
+        curr_real_price = self.apply_boll_bands(df_string="bitcoin_Price", 
+                                                price_col="bitcoin_Price",
+                                                ext_df=curr_real_price)
         forecast = self.arimax.get_forecast(steps=len(curr_fore_exp), exog=curr_fore_exp)
         
         return forecast, curr_real_price

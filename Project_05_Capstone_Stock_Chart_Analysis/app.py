@@ -303,11 +303,15 @@ CAUS_GRANGER_PLOT = [dbc.CardHeader(html.H5("Granger Causality with Time Lag of 
 
 ### F FORECAST ###
 
-FORE_DAYS_DROPDOWN = html.Div([
-                        dcc.Dropdown(id='fore_days_dropdown',
-                                     options=fore_days_labels,
-                                     value=FORE_DAYS[0])
-                     ,], style={"width":"20%"})
+
+FORE_DAYS_PICKER =  html.Div([   
+    dcc.DatePickerSingle(
+            id='fore_days_picker',
+            min_date_allowed=FORE_DAYS[0],
+            max_date_allowed=FORE_DAYS[-1],
+            initial_visible_month=FORE_DAYS[0],
+            date=FORE_DAYS[30]
+        ),])
 
 
 FORE_SENTIMENTS = [dbc.CardHeader(html.P("SENTIMENTS")),
@@ -323,13 +327,25 @@ FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                         dbc.CardBody( 
                             html.Div(children=[
                                         dbc.Row(children=[
-                                            html.Label("Column to Fix:",
+                                            html.Label("Day to Predict:",
                                                 style={"padding-left":20,
                                                        "padding": 10}), 
-                                            FORE_DAYS_DROPDOWN,
-                                            html.Label("Past Timeshift:",
+                                            FORE_DAYS_PICKER,
+                                            html.Label("Charts:",
                                                 style={"padding-left":20,
                                                        "padding": 10}),
+
+                                            dcc.Checklist(
+                                                    id="boll_check",
+                                                    options=[
+                                                        {'label': 'Bollinger Bands', 
+                                                         'value': 'boll'},], value=["boll"]),
+                                            dcc.Checklist(
+                                                    id="arimax_check",
+                                                    options=[
+                                                        {'label': 'Arimax Prediction', 
+                                                         'value': 'ari'},], value=["ari"])
+                                        
                                             ],
                                             align="center",
                                             style={"background-color": "#073642", "border-radius": "0.3rem"}),
@@ -439,11 +455,22 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
 
 @app.callback(
     Output("fore_plot", "figure"),
-    [Input("fore_days_dropdown", "value")], 
+    [Input("fore_days_picker", "date"),
+     Input("boll_check", "value"),
+     Input("arimax_check", "value"),], 
     [State("fore_plot", "figure")])
-def plot_forecast(curr_day, figure, plot_real_comp=False, conf_interval=False, boll_fore=False, boll_real=False):
+def plot_forecast(curr_day, boll_check, arimax_check, figure):
     curr_fore, curr_real = do_big.ari_forecast(curr_day)
-    return ""
+    
+    fig=""
+    if arimax_check:
+        fig = ph.get_ari_plot(df=curr_fore, fig="", conf_int=False)
+    
+    if boll_check:
+        return ph.price_plot(curr_real, fig=fig, dash=True)
+    else:
+        return ph.price_plot(curr_real, fig=fig, boll=False, dash=True)
+    
 
 @app.callback(
     Output("caus_seasonal_plot", "figure"),
