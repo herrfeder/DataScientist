@@ -310,6 +310,15 @@ FORE_DAYS_DROPDOWN = html.Div([
                      ,], style={"width":"20%"})
 
 
+FORE_SENTIMENTS = [dbc.CardHeader(html.P("SENTIMENTS")),
+                   dbc.CardBody(html.P("test"))]
+
+FORE_TRENDS = [dbc.CardHeader(html.P("TRENDS")),
+                   dbc.CardBody(html.P("test"))]
+
+FORE_STOCKS = [dbc.CardHeader(html.P("STOCKS")),
+                   dbc.CardBody(html.P("test"))]
+
 FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                         dbc.CardBody( 
                             html.Div(children=[
@@ -321,20 +330,17 @@ FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                                             html.Label("Past Timeshift:",
                                                 style={"padding-left":20,
                                                        "padding": 10}),
-                                            
-                                            dbc.Button("Run Correlation", 
-                                                       id="corr_shift_button", 
-                                                       className="btn btn-success")],
+                                            ],
                                             align="center",
                                             style={"background-color": "#073642", "border-radius": "0.3rem"}),
                                 
                                           dcc.Loading(
-                                              dcc.Graph(id="fore_plot",
-                                                        figure=ph.return_shift_corr(do_small,
-                                                                                    "bitcoin_Price", 
-                                                                                    -30, 
-                                                                                    dash=True))
-                                          )             
+                                              dcc.Graph(id="fore_plot")
+                                                       
+                                          ),
+                                          dbc.Row(children=[dbc.Col(FORE_SENTIMENTS),
+                                                            dbc.Col(FORE_TRENDS),
+                                                            dbc.Col(FORE_STOCKS)])
                             ])
                         )
              ]
@@ -430,6 +436,14 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
     elif (acc_str_list[5] in element_id):
         return FORE_ALL
 
+
+@app.callback(
+    Output("fore_plot", "figure"),
+    [Input("fore_days_dropdown", "value")], 
+    [State("fore_plot", "figure")])
+def plot_forecast(curr_day, figure, plot_real_comp=False, conf_interval=False, boll_fore=False, boll_real=False):
+    curr_fore, curr_real = do_big.ari_forecast(curr_day)
+    return ""
 
 @app.callback(
     Output("caus_seasonal_plot", "figure"),

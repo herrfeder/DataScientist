@@ -407,28 +407,28 @@ class ModelData(ShiftChartData):
         self.opt_ari_feat = opt_ari_feat
 
         self.train, self.test =  self.return_train_test()
-        self.test_exp = self.prep_ari_forecast()
+        self.fore_exp, self.real_price = self.prep_ari_forecast()
         
         
     def get_forecast_dates(self):
-        return list(self.test_exp.index.strftime("%Y-%m-%d")[30:-30])
+        return list(self.fore_exp.index.strftime("%Y-%m-%d"))
         
     def prep_ari_forecast(self):
-        test_exp = self.test[self.opt_ari_feat]
-        if not "week" in str(self.opt_ari_feat):
-            shift = -30
-        else:
-            shift = -7
-        for col in self.opt_ari_feat:
-            test_exp[col] = test_exp[col].shift(shift)
-            
-        test_exp = test_exp.iloc[:shift,:]
+        feat_prep = [x.split("_prev_month")[0] for x in self.opt_ari_feat]
+        feat_prep.append("bitcoin_Price")
+        forecast_exp = self.chart_df[(self.chart_df.index <= self.test.index.max()) & (self.chart_df.index > self.train.index.max())][feat_prep]
+        real_price = forecast_exp["bitcoin_Price"]
+        forecast_exp.drop(columns = ["bitcoin_Price"], inplace=True)
         
-        return test_exp
+        return forecast_exp, real_price     
+        
     
     def ari_forecast(self, curr_day):
-        print(curr_day)
+        curr_fore_exp = self.fore_exp[self.fore_exp.index <= curr_day]
+        curr_real_price = self.real_price[self.real_price.index <= curr_day]
+        forecast = self.arimax.get_forecast(steps=len(curr_fore_exp), exog=curr_fore_exp)
         
+        return forecast, curr_real_price
         
     def cross_validate_arimax(self):
             results = []
