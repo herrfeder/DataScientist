@@ -314,14 +314,14 @@ FORE_DAYS_PICKER =  html.Div([
         ),])
 
 
-FORE_SENTIMENTS = [dbc.CardHeader(html.P("SENTIMENTS")),
-                   dbc.CardBody(html.P("test"))]
+FORE_SENTIMENTS = [dbc.CardHeader(dbc.Row([html.P("SENTIMENTS")])),
+                   dbc.CardBody(html.P("EMPTY"), id="card_sents")]
 
-FORE_TRENDS = [dbc.CardHeader(html.P("TRENDS")),
-                   dbc.CardBody(html.P("test"))]
+FORE_TRENDS = [dbc.CardHeader(dbc.Row([html.P("TRENDS")])),
+                   dbc.CardBody(html.P("EMPTY"), id="card_trends")]
 
-FORE_STOCKS = [dbc.CardHeader(html.P("STOCKS")),
-                   dbc.CardBody(html.P("test"))]
+FORE_STOCKS = [dbc.CardHeader(dbc.Row([html.P("STOCKS")])),
+                   dbc.CardBody(html.P("EMPTY"), id="card_stocks")]
 
 FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                         dbc.CardBody( 
@@ -470,7 +470,33 @@ def plot_forecast(curr_day, boll_check, arimax_check, figure):
         return ph.price_plot(curr_real, fig=fig, dash=True)
     else:
         return ph.price_plot(curr_real, fig=fig, boll=False, dash=True)
+
     
+@app.callback(
+    [Output("card_sents", "children"),
+     Output("card_trends", "children"),
+     Output("card_stocks", "children")]
+    [Input("fore_days_picker", "date"),
+     Input("past_slide", "value")], 
+    [State("fore_plot", "figure")])
+def fill_fore_blocks(curr_day, past ,figure):   
+    
+    sentiments = ["economy_pos_sents", 
+                  "bitcoin_pos_sents"] 
+     
+    trends = ["bitcoin_Google_Trends", 
+              "cryptocurrency_Google_Trends"] 
+     
+    stocks = ["bitcoin_Price",
+              "sp500_Price", 
+              "alibaba_Price", 
+              "amazon_Price"]
+    
+    all_indicators = []
+    all_indicators.extend(sentiments)
+    all_indicators.extend(trends)
+    all_indicators.extend(stocks)
+    do_big.get_growth(curr_day, past, all_indicators)
 
 @app.callback(
     Output("caus_seasonal_plot", "figure"),

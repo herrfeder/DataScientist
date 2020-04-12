@@ -201,6 +201,23 @@ class ChartData():
             return self.chart_df.merge(append_df, left_index=True, right_index=True)
         else:
             self.chart_df = self.chart_df.merge(append_df, left_index=True, right_index=True)
+            
+            
+    def get_growth(self, day, past, cols=["bitcoin_Price"]):
+        
+        past_days = past
+        window = int(np.round(abs(past_days)/2))
+        
+        past_days_df = self.chart_df[self.chart_df.index < day].iloc[past_days:,:].rolling(window=window, min_periods=1 ).mean()
+        
+        if not isinstance(cols,list):
+                cols = [cols]
+        
+        growth_dict = {}
+        for col in cols:
+            growth_dict[col] = 100 - (past_days_df[col][0]/past_days_df[col][-1]*100)
+            
+        return growth_dict
         
 
 class ShiftChartData(ChartData):
