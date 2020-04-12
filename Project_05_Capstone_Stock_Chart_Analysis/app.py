@@ -117,6 +117,29 @@ def make_items(acc_str_list, acc_slider_list):
     return card_list
 
 
+
+def build_growth_content(growth_dict, cols):
+    col_col = []
+    val_col = []
+    
+    for col in cols:
+        val = growth_dict[col]
+        if val >= 0:
+            color="green"
+        else:
+            color="red"
+          
+        col_name = col.split("_")[0]
+        col_col.append(dbc.Row(html.P(col_name,style={"color":color}),style={"height":"25px"}))
+        val_col.append(dbc.Row(html.P(str(val)+"%",style={"color":color, "font-weight":"bold"}), style={"height":"25px"}))
+    
+    left_col = dbc.Col(col_col, width=8)
+    right_col = dbc.Col(val_col, width=4)
+    
+    return dbc.Row(children=[left_col, right_col])
+                    
+                    
+
 exploratory_fig = ph.exploratory_plot(do_big.apply_boll_bands("bitcoin_hist",
                                                               append_chart=False), title="", dash=True)
 corr_01_matrix_plot = ph.plot_val_heatmap(do_small.chart_df.corr(), 
@@ -314,14 +337,32 @@ FORE_DAYS_PICKER =  html.Div([
         ),])
 
 
-FORE_SENTIMENTS = [dbc.CardHeader(dbc.Row([html.P("SENTIMENTS")])),
-                   dbc.CardBody(html.P("EMPTY"), id="card_sents")]
+FORE_SENTIMENTS = [dbc.CardHeader(dbc.Row([html.P("TWITTER SENTIMENTS")]),style={"height":"40px"}),
+                   dbc.CardBody(html.P("EMPTY"), id="card_sents", style={"height":"130px",
+                                                                         "background-color":"#073642"})]
 
-FORE_TRENDS = [dbc.CardHeader(dbc.Row([html.P("TRENDS")])),
-                   dbc.CardBody(html.P("EMPTY"), id="card_trends")]
+FORE_TRENDS = [dbc.CardHeader(dbc.Row([html.P("GOOGLE TRENDS")]), style={"height":"40px"}),
+                   dbc.CardBody(html.P("EMPTY"), id="card_trends", style={"height":"130px",
+                                                                         "background-color":"#073642"})]
 
-FORE_STOCKS = [dbc.CardHeader(dbc.Row([html.P("STOCKS")])),
-                   dbc.CardBody(html.P("EMPTY"), id="card_stocks")]
+FORE_STOCKS = [dbc.CardHeader(dbc.Row([html.P("STOCKS")]), style={"height":"40px"}),
+                   dbc.CardBody(html.P("EMPTY"), id="card_stocks", style={"height":"130px",
+                                                                         "background-color":"#073642"})]
+
+FORE_PAST_SLIDER =  html.Div(children=[
+                        dcc.Slider(
+                            id='fore_past_slider',
+                            updatemode = "drag",
+                            marks={day_shift: {
+                                            "label": str(day_shift),
+                                            "style": {"color": "#7fafdf"},
+                                        }
+                                        for day_shift in range(0,35,5) },
+                            min=0,
+                            max=30,
+                            step=5,
+                            value=20,),
+                    ],style={"width":"20%"})
 
 FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                         dbc.CardBody( 
@@ -344,8 +385,9 @@ FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                                                     id="arimax_check",
                                                     options=[
                                                         {'label': 'Arimax Prediction', 
-                                                         'value': 'ari'},], value=["ari"])
-                                        
+                                                         'value': 'ari'},], value=["ari"]),
+                                            
+                                            FORE_PAST_SLIDER
                                             ],
                                             align="center",
                                             style={"background-color": "#073642", "border-radius": "0.3rem"}),
@@ -475,9 +517,9 @@ def plot_forecast(curr_day, boll_check, arimax_check, figure):
 @app.callback(
     [Output("card_sents", "children"),
      Output("card_trends", "children"),
-     Output("card_stocks", "children")]
+     Output("card_stocks", "children")],
     [Input("fore_days_picker", "date"),
-     Input("past_slide", "value")], 
+     Input("fore_past_slider", "value")], 
     [State("fore_plot", "figure")])
 def fill_fore_blocks(curr_day, past ,figure):   
     
@@ -496,7 +538,13 @@ def fill_fore_blocks(curr_day, past ,figure):
     all_indicators.extend(sentiments)
     all_indicators.extend(trends)
     all_indicators.extend(stocks)
-    do_big.get_growth(curr_day, past, all_indicators)
+    growth_dict = do_big.get_growth(curr_day, past, all_indicators)
+    
+    card_sents = build_growth_content(growth_dict, sentiments)
+    card_trends = build_growth_content(growth_dict, trends)
+    card_stocks = build_growth_content(growth_dict, stocks)
+    
+    return card_sents, card_trends, card_stocks
 
 @app.callback(
     Output("caus_seasonal_plot", "figure"),

@@ -215,7 +215,7 @@ class ChartData():
         
         growth_dict = {}
         for col in cols:
-            growth_dict[col] = 100 - (past_days_df[col][0]/past_days_df[col][-1]*100)
+            growth_dict[col] = np.round(100 - (past_days_df[col][0]/past_days_df[col][-1]*100),2)
             
         return growth_dict
         
