@@ -6,6 +6,9 @@ import os
 import sys
 import numpy as np
 import pickle
+from math import sqrt
+from sklearn.metrics import mean_squared_error
+
 
 
 class ErrorComparer():
@@ -215,7 +218,7 @@ class ChartData():
         
         growth_dict = {}
         for col in cols:
-            growth_dict[col] = np.round(100 - (past_days_df[col][0]/past_days_df[col][-1]*100),2)
+            growth_dict[col] = np.round(100 - ((past_days_df[col][0]/past_days_df[col][-1])*100),2)
             
         return growth_dict
         
@@ -312,6 +315,9 @@ class ShiftChartData(ChartData):
                  'amazon_Price',
                  'amazon_High',
                  'amazon_Low',
+                 'googl_Price',
+                 'googl_High',
+                 'googl_Low',
                  'bitcoin_Google_Trends',
                  'cryptocurrency_Google_Trends',
                  'economy_pos_sents']
@@ -435,8 +441,10 @@ class ModelData(ShiftChartData):
                                'economy_pos_sents_prev_month']):
         super().__init__(fixed_cols, window_size, chart_col)    
                
-        arimax_path = self.base_path.joinpath("models/sarimax_5_feat_month.pkl")
-        self.arimax = pickle.load( open( arimax_path, "rb" ) )
+        self.arimax_path = str(self.base_path.joinpath("models/sarimax_5_feat_month{}.pkl"))
+        self.arimax_model = self.arimax_path.format("")
+        self.arimax_split_model = [self.arimax_path.format("_S"+str(i)) for i in range(1,4)]
+        self.arimax = pickle.load( open( self.arimax_model, "rb" ) )
         self.opt_ari_feat = opt_ari_feat
 
         self.train, self.test =  self.return_train_test()
@@ -472,25 +480,24 @@ class ModelData(ShiftChartData):
         return forecast, curr_real_price
         
     def cross_validate_arimax(self):
-            results = []
+            result_dict = {}
+            split_index = 0
             for train, test in self.gen_return_splits():
-    
-                #train["economy_pos_sents_prev_month"] = train["economy_pos_sents_prev_month"].rolling(window=10,min_periods=1).mean()
-                #test["economy_pos_sents_prev_month"] = test["economy_pos_sents_prev_month"].rolling(window=10,min_periods=1).mean()
-
-                s1i1 = train['bitcoin_Price']
-                exog_s1i1 = train[features]
-                arimax = sm.tsa.statespace.SARIMAX(s1i1, 
-                                               exog=exog_s1i1,
-                                               enforce_invertibility=False, 
-                                               enforce_stationarity=False, 
-                                               freq='D').fit()
         
-                exog = test[features]
+                exog = test[self.opt_ari_feat]
+            
+                arimax = pickle.load( open( self.arimax_split_model[split_index], "rb" ) )
                 forecast = arimax.get_forecast(steps=len(test), exog=exog)
         
-    
-                results.append((valid["bitcoin_Price"], forecast.predicted_mean))
+                result_dict["S_{}_CORR".format(split_index)] = np.corrcoef(forecast.predicted_mean,test["bitcoin_Price"].values)[0][1]
+                result_dict["S_{}_RMSE".format(split_index)] = sqrt(mean_squared_error(forecast.predicted_mean, test["bitcoin_Price"]))
+        
+                result_dict["S_{}_VALID".format(split_index)] = test["bitcoin_Price"]
+                result_dict["S_{}_FORE".format(split_index)] = forecast.predicted_mean
+            
+                split_index = split_index + 1
+                
+            return result_dict
 
 ### APPLY FUNCTIONS ###
     

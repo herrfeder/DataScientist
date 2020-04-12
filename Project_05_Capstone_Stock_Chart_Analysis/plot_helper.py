@@ -256,5 +256,34 @@ def return_granger_plot(df_path, title="", height=1000, colormap="viridis",dash=
                             colormap=colormap,
                             colorbar="P-Value",
                             dash=dash)
-    
 
+def return_cross_val_plot(split_dict, title="", height=1200, dash=False):
+    
+    
+    fig = make_subplots(
+                        rows=3, 
+                        cols=1, 
+                        vertical_spacing=0.08,
+                        subplot_titles=("Split 1", 
+                                        "Split 2", 
+                                        "Split 3"))
+        
+    
+    for i in range(0,3):
+        valid_plot = split_dict["S_{}_VALID".format(i)]
+        
+        fig.add_trace(go.Scatter(x=valid_plot.index, 
+                         y=valid_plot,
+                         name="Real Bitcoin Price Split {}".format(i+1)), row=i+1, col=1)
+        
+        fore_plot = split_dict["S_{}_FORE".format(i)]
+        
+        fig.add_trace(go.Scatter(x=valid_plot.index, 
+                         y=fore_plot,
+                         name="Predicted Bitcoin Price Split {}".format(i+1)), row=i+1, col=1)
+
+        
+    if dash:
+        return apply_layout(fig, title, height=height)
+    else:
+        fig.show()

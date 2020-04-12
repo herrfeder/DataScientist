@@ -324,6 +324,19 @@ CAUS_GRANGER_PLOT = [dbc.CardHeader(html.H5("Granger Causality with Time Lag of 
 
 ### E MODEL EVALUATION ###
 
+MODEL_SARIMAX_EVAL = [dbc.CardHeader(html.H5("Model SARIMAX Cross Validation")),
+                     dbc.CardBody(
+                         html.Div(children=[
+                                        dcc.Loading(
+                                            dcc.Graph(id="sarimax_cross_validation",
+                                                      figure=ph.return_cross_val_plot(do_big.cross_validate_arimax(),
+                                                                                      title="",
+                                                                                      dash=True)))
+                         ]
+                                         ))]
+
+
+
 ### F FORECAST ###
 
 
@@ -403,10 +416,6 @@ FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                         )
              ]
 
-
-TABLE_VIEW = [dbc.CardHeader(html.H5("10 Most Similiar Users")),
-              dbc.CardBody(dcc.Loading(dash_table.DataTable(id="usertableview")))
-                ]
 
 BODY = dbc.Container([
             dbc.Row(
@@ -491,8 +500,14 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
         if sli_04 == 0:
             return ""
         
+    elif (acc_str_list[4] in element_id):
+        if sli_05 == 2:
+            return MODEL_SARIMAX_EVAL
     elif (acc_str_list[5] in element_id):
-        return FORE_ALL
+        if sli_06 == 1:
+            return FORE_ALL
+        if sli_06 == 0:
+            return ""
 
 
 @app.callback(
@@ -538,6 +553,9 @@ def fill_fore_blocks(curr_day, past ,figure):
     all_indicators.extend(sentiments)
     all_indicators.extend(trends)
     all_indicators.extend(stocks)
+
+    
+    past = past*-1
     growth_dict = do_big.get_growth(curr_day, past, all_indicators)
     
     card_sents = build_growth_content(growth_dict, sentiments)
