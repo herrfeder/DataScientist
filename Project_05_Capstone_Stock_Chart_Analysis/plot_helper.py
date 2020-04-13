@@ -1,6 +1,7 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from statsmodels.tsa.seasonal import seasonal_decompose
+from pandas.tseries.offsets import DateOffset
 import pandas as pd
 import numpy as np
 
@@ -25,7 +26,7 @@ def apply_layout(fig, title="", height=1250):
     return fig
 
 
-def get_ari_plot(df, fig="", title="",conf_int=False, dash=False):
+def get_ari_plot(df, fig="", title="", offset=31,conf_int=False, dash=False):
     
     if not fig:
         fig = make_subplots(
@@ -36,14 +37,14 @@ def get_ari_plot(df, fig="", title="",conf_int=False, dash=False):
     
     df_mean = df.predicted_mean.rolling(window=10,min_periods=1).mean()
     
-    fig.add_trace(go.Scatter(x=df.predicted_mean.index, 
+    fig.add_trace(go.Scatter(x=df.predicted_mean.index + DateOffset(offset), 
                              y=df_mean,
                              line=dict(color='green'),
                              name="SARIMAX Prediction"), row=1, col=1)
     
     if conf_int:
         
-        fig.add_trace(go.Scatter(x=df.predicted_mean.index, 
+        fig.add_trace(go.Scatter(x=df.predicted_mean.index + DateOffset(offset), 
                              y=df.conf_int()["lower bitcoin_Price"],
                              fill='tonexty',
                              fillcolor='rgba(166, 217, 193,0.2)',
@@ -51,7 +52,7 @@ def get_ari_plot(df, fig="", title="",conf_int=False, dash=False):
                              name="SARIMAX Lower Confidence Interval"))
 
 
-        fig.add_trace(go.Scatter(x=df.predicted_mean.index, 
+        fig.add_trace(go.Scatter(x=df.predicted_mean.index + DateOffset(offset), 
                              y=df.conf_int()["upper bitcoin_Price"],
                              fill='tonexty',
                              fillcolor='rgba(166, 217, 193,0.2)',
@@ -272,16 +273,33 @@ def return_cross_val_plot(split_dict, title="", height=1200, dash=False):
     for i in range(0,3):
         valid_plot = split_dict["S_{}_VALID".format(i)]
         
-        fig.add_trace(go.Scatter(x=valid_plot.index, 
+        if hasattr(valid_plot, "index"):
+            valid_plot_index = valid_plot.index
+        else:
+            valid_plot_index = list(range(0, len(valid_plot)))
+        
+        fig.add_trace(go.Scatter(x=valid_plot_index, 
                          y=valid_plot,
                          name="Real Bitcoin Price Split {}".format(i+1)), row=i+1, col=1)
         
         fore_plot = split_dict["S_{}_FORE".format(i)]
         
-        fig.add_trace(go.Scatter(x=valid_plot.index, 
+        if hasattr(fore_plot, "index"):
+            fore_plot_index = valid_plot.index
+        else:
+            fore_plot_index = list(range(0, len(fore_plot)))
+        
+        fig.add_trace(go.Scatter(x=valid_plot_index, 
                          y=fore_plot,
                          name="Predicted Bitcoin Price Split {}".format(i+1)), row=i+1, col=1)
-
+        
+        
+    
+    ## need to add error blah
+    
+    #fig.update_yaxes(title_text="Split 1<br>blah", row=1, col=1)
+    #fig.update_yaxes(title_text="Split 2<br>blah", row=2, col=1)
+    #fig.update_yaxes(title_text="Split 3<br>blah", row=3, col=1)
         
     if dash:
         return apply_layout(fig, title, height=height)

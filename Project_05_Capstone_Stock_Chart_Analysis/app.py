@@ -12,6 +12,15 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
+import tensorflow
+tensorflow.random.set_seed(2)
+from keras.models import Sequential, load_model
+from keras.layers.core import Dense
+from keras.layers.recurrent import GRU
+from keras import optimizers
+from keras.callbacks import EarlyStopping
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error, r2_score
 
 import plot_helper as ph
 import data_prep_helper
@@ -335,6 +344,17 @@ MODEL_SARIMAX_EVAL = [dbc.CardHeader(html.H5("Model SARIMAX Cross Validation")),
                          ]
                                          ))]
 
+MODEL_GRU_EVAL = [dbc.CardHeader(html.H5("Model GRU Cross Validation")),
+                     dbc.CardBody(
+                         html.Div(children=[
+                                        dcc.Loading(
+                                            dcc.Graph(id="gru_cross_validation",
+                                                      figure=ph.return_cross_val_plot(do_big.cross_validate_gru(),
+                                                                                      title="",
+                                                                                      dash=True)))
+                         ]
+                                         ))]
+
 
 
 ### F FORECAST ###
@@ -503,6 +523,8 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
     elif (acc_str_list[4] in element_id):
         if sli_05 == 2:
             return MODEL_SARIMAX_EVAL
+        if sli_05 == 0:
+            return MODEL_GRU_EVAL
     elif (acc_str_list[5] in element_id):
         if sli_06 == 1:
             return FORE_ALL
@@ -517,7 +539,8 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
      Input("arimax_check", "value"),], 
     [State("fore_plot", "figure")])
 def plot_forecast(curr_day, boll_check, arimax_check, figure):
-    curr_fore, curr_real = do_big.ari_forecast(curr_day)
+    curr_fore, curr_real = do_big.ari_forecast_02(curr_day , shift=-31)
+    curr_fore_02, curr_real_02 = do_big.gru_forecast(curr_day)
     
     fig=""
     if arimax_check:

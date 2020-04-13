@@ -7,12 +7,12 @@ import sys
 import numpy as np
 import pickle
 from math import sqrt
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import MinMaxScaler
+from keras.models import load_model
+from pandas.tseries.offsets import DateOffset
 
 
-
-class ErrorComparer():
-    pass
 
 class ChartData():
     
@@ -412,6 +412,41 @@ class ShiftChartData(ChartData):
         
         return train, test
     
+    def gen_scaled_train_val_test(self, features, split=""):
+        if split:
+            split_range = range(0,split)
+        else:
+            split_range = range(2,3)
+            
+        for split_number in split_range:
+            train = self.chart_df[:900+(split_number*300)]
+            val = self.chart_df[900+(split_number*300):1100+(split_number*300)]
+            test = self.chart_df[1100+(split_number*300):]    
+
+            train = ShiftChartData.get_causal_const_shift(train, past="all")[features]
+            val = ShiftChartData.get_causal_const_shift(val, past="all")[features]
+            test = ShiftChartData.get_causal_const_shift(test, past="all")[features]
+
+            sc = MinMaxScaler()
+            train = sc.fit_transform(train)
+            sc = MinMaxScaler()
+            val = sc.fit_transform(val)
+            sc = MinMaxScaler()
+            test = sc.fit_transform(test)
+            
+            yield train, val, test, split_number
+            
+    def return_scaled_test(self, pred, true):
+        pred_c = MinMaxScaler()
+        pred = pred_c.fit_transform(pred)
+        
+        true_c = MinMaxScaler()
+        true = true_c.fit_transform(true)
+        
+        return pred, pred_c, true, true_c
+        
+        
+    
     
     def gen_return_splits(self, splits=3, split_size=300, data_len=1800, past="all"):
         start_split = int(np.round((data_len/2)/split_size))
@@ -438,7 +473,21 @@ class ModelData(ShiftChartData):
                                'cryptocurrency_Google_Trends_prev_month',
                                'alibaba_High_prev_month',
                                'amazon_High_prev_month',
-                               'economy_pos_sents_prev_month']):
+                               'economy_pos_sents_prev_month'],
+                 opt_gru_feat = [
+                                 'alibaba_Price_prev_month',
+                                 'alibaba_Low_prev_month',
+                                 'alibaba_High_prev_month',
+                                 'amazon_Price_prev_month',
+                                 'amazon_Low_prev_month',
+                                 'amazon_High_prev_month',
+                                 'googl_Price_prev_month',
+                                 'googl_Low_prev_month',
+                                 'googl_High_prev_month',
+                                 'bitcoin_Google_Trends_prev_month',
+                                 'economy_pos_sents_prev_month',
+                                 'cryptocurrency_Google_Trends_prev_month']):
+        
         super().__init__(fixed_cols, window_size, chart_col)    
                
         self.arimax_path = str(self.base_path.joinpath("models/sarimax_5_feat_month{}.pkl"))
@@ -446,38 +495,98 @@ class ModelData(ShiftChartData):
         self.arimax_split_model = [self.arimax_path.format("_S"+str(i)) for i in range(1,4)]
         self.arimax = pickle.load( open( self.arimax_model, "rb" ) )
         self.opt_ari_feat = opt_ari_feat
-
         self.train, self.test =  self.return_train_test()
-        self.fore_exp, self.real_price = self.prep_ari_forecast()
         
+        self.gru_path = str(self.base_path.joinpath("models/gru_12_feat_month{}.h5"))
+        self.gru_model = self.gru_path.format("")
+        self.gru_split_model = [self.gru_path.format("_S"+str(i)) for i in range(0,3)]
+        self.gru = load_model(self.gru_model)
+        self.gru_timesteps = 60
+        self.opt_gru_feat = opt_gru_feat
+
         
     def get_forecast_dates(self):
-        return list(self.fore_exp.index.strftime("%Y-%m-%d"))
+        forecast_exp = self.chart_df[(self.chart_df.index <= self.test.index.max()) & (self.chart_df.index > self.train.index.max())].index[30:]
+        return list(forecast_exp.strftime("%Y-%m-%d"))
+    
+   
+    def gru_forecast_02(self, curr_day, shift=-31):
+        pass
+
+    
+    def gru_forecast(self, curr_day):
+        fore_exp, real_price = self.prep_forecast(self.opt_gru_feat)
         
-    def prep_ari_forecast(self):
-        feat_prep = [x.split("_prev_month")[0] for x in self.opt_ari_feat]
-        feat_prep.append("bitcoin_Price")
-        forecast_exp = self.chart_df[(self.chart_df.index <= self.test.index.max()) & (self.chart_df.index > self.train.index.max())][feat_prep]
-        real_price = forecast_exp["bitcoin_Price"]
-        forecast_exp.drop(columns = ["bitcoin_Price"], inplace=True)
+        curr_fore_exp = fore_exp[fore_exp.index <= curr_day]
+        print(fore_exp.shape)
+
+        curr_real_price = pd.DataFrame(real_price[real_price.index <= curr_day])
+
+        sca_fore, fore_tra, sca_real, real_tra = self.return_scaled_test(curr_fore_exp, curr_real_price)
+        print(np.shape(sca_fore))
         
-        return forecast_exp, real_price     
+        mse, rmse, r2_value,true,predicted = evaluate_model(self.gru,sca_fore,self.gru_timesteps)
+
+        predicted = real_tra.inverse_transform(predicted.reshape(-1,1))
         
+        forecast = pd.DataFrame(predicted, index=curr_real_price.index)
+        
+        return forecast, curr_real_price 
+        
+    
+    
+    def ari_forecast_02(self, curr_day, shift=-31):
+        
+        feat_prep = [x.replace("_prev_month","{}") for x in self.opt_ari_feat]
+        
+        fore_cast = self.test[self.test.index <= curr_day].iloc[shift:,:][self.opt_ari_feat]
+        
+        real_price = self.test[self.test.index <= curr_day][["bitcoin_Price"]]
+        curr_real_price = self.apply_boll_bands(df_string="bitcoin_Price", 
+                                                price_col="bitcoin_Price",
+                                                ext_df=real_price)
+        
+        fore_cast.index = fore_cast.index + DateOffset(abs(shift))
+        
+        future_dict = {x.format(""):x.format("_prev_month") for x in feat_prep}
+        fore_cast.rename(columns=future_dict, inplace=True)
+        
+        shift_df = self.test[self.test.index <= curr_day]
+        
+        forecast_exp = pd.concat([shift_df[self.opt_ari_feat], fore_cast[self.opt_ari_feat]])
+                
+        forecast = self.arimax.get_forecast(steps=len(forecast_exp), exog=forecast_exp)
+
+        return forecast, curr_real_price
+    
     
     def ari_forecast(self, curr_day):
-        curr_fore_exp = self.fore_exp[self.fore_exp.index <= curr_day]
-        #try:
-        #    curr_fore_exp["economy_pos_sents"] = curr_fore_exp["economy_pos_sents"].rolling(window=10,min_periods=1).mean()
-        #except:
-        #    pass
+        fore_exp, real_price = self.prep_forecast(self.opt_ari_feat)
+        print(real_price)
+        print(curr_day)
+        curr_fore_exp = fore_exp[fore_exp.index <= curr_day]
     
-        curr_real_price = pd.DataFrame(self.real_price[self.real_price.index <= curr_day])
+        curr_real_price = real_price[real_price.index <= curr_day]
+        print(curr_real_price)
         curr_real_price = self.apply_boll_bands(df_string="bitcoin_Price", 
                                                 price_col="bitcoin_Price",
                                                 ext_df=curr_real_price)
         forecast = self.arimax.get_forecast(steps=len(curr_fore_exp), exog=curr_fore_exp)
         
         return forecast, curr_real_price
+
+    
+    def prep_forecast(self, features):
+        feat_prep = [x.split(" ")[0] for x in features]
+        feat_prep.append("bitcoin_Price")
+        forecast_exp = self.chart_df[(self.chart_df.index <= self.test.index.max()) & (self.chart_df.index > self.train.index.max())]
+        
+        forecast_exp = self.get_causal_const_shift(forecast_exp, past="all")[feat_prep]
+        real_price = forecast_exp[["bitcoin_Price"]]
+        forecast_exp.drop(columns = ["bitcoin_Price"], inplace=True)
+                
+        return forecast_exp, real_price     
+         
         
     def cross_validate_arimax(self):
             result_dict = {}
@@ -498,6 +607,20 @@ class ModelData(ShiftChartData):
                 split_index = split_index + 1
                 
             return result_dict
+        
+    def cross_validate_gru(self):
+        result_dict = {}
+        for train,val,test,split_index in self.gen_scaled_train_val_test(self.opt_gru_feat, split=3):
+    
+            model = load_model(self.gru_split_model[split_index])
+            mse, rmse, r2_value,true,predicted = evaluate_model(model,test,self.gru_timesteps)
+            result_dict["S_{}_MSE".format(split_index)] = mse
+            result_dict["S_{}_RMSE".format(split_index)] = rmse
+            result_dict["S_{}_R2".format(split_index)] = r2_value
+            result_dict["S_{}_VALID".format(split_index)] = true
+            result_dict["S_{}_FORE".format(split_index)] = predicted.reshape(len(predicted))
+
+        return result_dict
 
 ### APPLY FUNCTIONS ###
     
@@ -520,4 +643,25 @@ def convert_vol(row, col):
     if letter=="K":
         val = val*1000
     
-    return val    
+    return val     
+
+
+### OTHER HELPERS ###
+
+def evaluate_model(model, test, timesteps):
+    X_test = []
+    Y_test = []
+
+    # Loop for testing data
+    for i in range(timesteps,test.shape[0]):
+        X_test.append(test[i-timesteps:i])
+        Y_test.append(test[i][0])
+    X_test,Y_test = np.array(X_test),np.array(Y_test)
+
+    # Prediction Time !!!!
+    Y_hat = model.predict(X_test)
+    mse = mean_squared_error(Y_test,Y_hat)
+    rmse = sqrt(mse)
+    r2 = r2_score(Y_test,Y_hat)
+    return mse,rmse, r2, Y_test, Y_hat
+    
