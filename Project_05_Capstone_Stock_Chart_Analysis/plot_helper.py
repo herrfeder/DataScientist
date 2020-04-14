@@ -90,7 +90,7 @@ def get_ari_plot(df, fig="", title="", offset=31,conf_int=False, dash=False):
         return fig
     
 
-def price_plot(df, fig="", title="", boll=True, dash=False, names=["BTC Price",
+def price_plot(df, real_30=pd.DataFrame(),fig="", title="", boll=True, dash=False, names=["BTC Price",
                                            "BTC 30 Day Moving Average",
                                            "BTC Upper Bollinger Band",
                                            "BTC Lower Bollinger Band"]):
@@ -103,6 +103,12 @@ def price_plot(df, fig="", title="", boll=True, dash=False, names=["BTC Price",
     fig.add_trace(go.Scatter(x=df.index, 
                              y=df['bitcoin_Price'],
                              name=names[0]), row=1, col=1)
+    
+    if not real_30.empty:
+        fig.add_trace(go.Scatter(x=real_30.index,
+                                 y=real_30['bitcoin_Price'],
+                                 name="Future Real Bitcoin Price",
+                                 line=dict(color='grey', dash='dot')), row=1, col=1)
     if boll:
         fig.add_trace(go.Scatter(x=df.index, 
                                  y=df['bitcoin_30_day_ma'],
@@ -142,7 +148,7 @@ def exploratory_plot(df, title="",dash=False):
                                         "Historic Sentiments Twitter")
                         )
     
-    fig = price_plot(df, fig)
+    fig = price_plot(df, fig=fig)
 
     y_2_list = ["sp500_Price_norm", 
                 "dax_Price_norm",
@@ -285,17 +291,22 @@ def return_granger_plot(df_path, title="", height=1000, colormap="viridis",dash=
 
 def return_cross_val_plot(split_dict, title="", height=1200, dash=False):
     
+    params = ["CORR", "MSE", "RMSE", "R2"]
     
-    fig = make_subplots(
-                        rows=3, 
-                        cols=1, 
-                        vertical_spacing=0.08,
-                        subplot_titles=("Split 1\nblah", 
-                                        "Split 2", 
-                                        "Split 3"))
+   
         
-    
+    valid_list = []
+    forecast_list = []
+    title_list = []
     for i in range(0,3):
+        title_text = "Split {}<br>| ".format(i+1)
+        for para in params:
+            dict_val = split_dict.get("S_{}_{}".format(i,para),"") 
+            if dict_val:
+                title_text += para+" = "+str(np.round(dict_val,2))+" | "
+        
+        title_list.append(title_text)
+        
         valid_plot = split_dict["S_{}_VALID".format(i)]
         
         if hasattr(valid_plot, "index"):
@@ -303,9 +314,9 @@ def return_cross_val_plot(split_dict, title="", height=1200, dash=False):
         else:
             valid_plot_index = list(range(0, len(valid_plot)))
         
-        fig.add_trace(go.Scatter(x=valid_plot_index, 
+        valid_list.append(go.Scatter(x=valid_plot_index, 
                          y=valid_plot,
-                         name="Real Bitcoin Price Split {}".format(i+1)), row=i+1, col=1)
+                         name="Real Bitcoin Price Split {}".format(i+1)))
         
         fore_plot = split_dict["S_{}_FORE".format(i)]
         
@@ -314,21 +325,28 @@ def return_cross_val_plot(split_dict, title="", height=1200, dash=False):
         else:
             fore_plot_index = list(range(0, len(fore_plot)))
         
-        fig.add_trace(go.Scatter(x=valid_plot_index, 
+        forecast_list.append(go.Scatter(x=valid_plot_index, 
                          y=fore_plot,
-                         name="Predicted Bitcoin Price Split {}".format(i+1)), row=i+1, col=1)
+                         name="Predicted Bitcoin Price Split {}".format(i+1)))
         
-        
+    fig = make_subplots(
+                    rows=3, 
+                    cols=1, 
+                    vertical_spacing=0.08,
+                    subplot_titles=(title_list[0], 
+                                    title_list[1], 
+                                    title_list[2]))
     
-    ## need to add error blah
+    index = 1
+    for valid, forecast in zip(valid_list, forecast_list):
+        fig.add_trace(valid, row=index, col=1)
+        fig.add_trace(forecast, row=index, col=1)
+        index = index + 1
     
-    #fig.layout.annotations(subplot_titles=["Split 1<br>blah", "", ""])
-    #fig.update_title(title_text="Split 2<br>blah", row=2, col=1)
-    #fig.update_title(title_text="Split 3<br>blah", row=3, col=1)
-        
-    #if dash:
-    #    return apply_layout(fig, title, height=height)
-    #else:
-    #    fig.show()
+  
+    if dash:
+        return apply_layout(fig, title, height=height)
+    else:
+        fig.show()
     
     return fig

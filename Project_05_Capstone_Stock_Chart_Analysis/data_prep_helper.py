@@ -11,6 +11,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import load_model
 from pandas.tseries.offsets import DateOffset
+from datetime import datetime
 
 
 
@@ -436,6 +437,8 @@ class ShiftChartData(ChartData):
             
             yield train, val, test, split_number
             
+            
+            
     def return_scaled_test(self, pred, true):
         pred_c = MinMaxScaler()
         pred = pred_c.fit_transform(pred)
@@ -510,32 +513,27 @@ class ModelData(ShiftChartData):
         forecast_exp = self.chart_df[(self.chart_df.index <= self.test.index.max()) & (self.chart_df.index > self.train.index.max())].index[30:]
         return list(forecast_exp.strftime("%Y-%m-%d"))
     
-   
-    def gru_forecast_02(self, curr_day, shift=-31):
-        pass
-
-    
-    def gru_forecast(self, curr_day, shift=-31):
+    def get_real_price(self, curr_day, shift=-31):
         
-        feat_prep = [x.replace("_prev_month","{}") for x in self.opt_gru_feat]
-        now_feat = [x.format("") for x in feat_prep]
+        offset = shift*-1
         
-        past_df = self.test[self.test.index <= curr_day]
-        
-        forecast_df = past_df.iloc[shift:,:][now_feat]
+        curr_date = datetime.strptime(curr_day, "%Y-%m-%d")
+        curr_date_offset = curr_date + DateOffset(days=offset)
         
         real_price = self.test[self.test.index <= curr_day][["bitcoin_Price"]]
         curr_real_price = self.apply_boll_bands(df_string="bitcoin_Price", 
                                                 price_col="bitcoin_Price",
                                                 ext_df=real_price)
         
-        forecast_df.index = forecast_df.index + DateOffset(abs(shift))
+        real_price_31 = self.test[(self.test.index < curr_date_offset) & (self.test.index >= curr_date)][["bitcoin_Price"]]
         
-        future_dict = {x.format(""):x.format("_prev_month") for x in feat_prep}
-        forecast_df.rename(columns=future_dict, inplace=True)
+        return curr_real_price, real_price_31
+    
+    
+    def gru_forecast(self, curr_day, shift=-31):
         
-        forecast_exp = pd.concat([past_df[self.opt_gru_feat], forecast_df[self.opt_gru_feat]])
-
+        forecast_exp = self.prep_forecast(self.opt_gru_feat, curr_day, shift)
+       
         sca_fore, fore_tra, sca_price, price_tra = self.return_scaled_test(forecast_exp,
                                                                            forecast_exp[["bitcoin_Price_prev_month"]])
         
@@ -546,62 +544,37 @@ class ModelData(ShiftChartData):
         
         forecast = pd.DataFrame(predicted, index=forecast_exp.iloc[:(self.gru_timesteps)*-1,:].index)
         
-        return forecast, curr_real_price
+        return forecast
         
     
     
-    def ari_forecast_02(self, curr_day, shift=-31):
+    def ari_forecast(self, curr_day, shift=-31):
         
-        feat_prep = [x.replace("_prev_month","{}") for x in self.opt_ari_feat]
+        forecast_exp = self.prep_forecast(self.opt_ari_feat, curr_day, shift)
+                
+        forecast = self.arimax.get_forecast(steps=len(forecast_exp), exog=forecast_exp)
+
+        return forecast
+    
+    
+    def prep_forecast(self, features, curr_day, shift):
+        
+        feat_prep = [x.replace("_prev_month","{}") for x in features]
         now_feat = [x.format("") for x in feat_prep]
         
         past_df = self.test[self.test.index <= curr_day]
         
         forecast_df = past_df.iloc[shift:,:][now_feat]
-        
-        real_price = self.test[self.test.index <= curr_day][["bitcoin_Price"]]
-        curr_real_price = self.apply_boll_bands(df_string="bitcoin_Price", 
-                                                price_col="bitcoin_Price",
-                                                ext_df=real_price)
-        
+                
         forecast_df.index = forecast_df.index + DateOffset(abs(shift))
         
         future_dict = {x.format(""):x.format("_prev_month") for x in feat_prep}
+        
         forecast_df.rename(columns=future_dict, inplace=True)
         
-        forecast_exp = pd.concat([past_df[self.opt_ari_feat], forecast_df[self.opt_ari_feat]])
-                
-        forecast = self.arimax.get_forecast(steps=len(forecast_exp), exog=forecast_exp)
-
-        return forecast, curr_real_price
-    
-    
-    def ari_forecast(self, curr_day):
-        fore_exp, real_price = self.prep_forecast(self.opt_ari_feat)
-        print(real_price)
-        print(curr_day)
-        curr_fore_exp = fore_exp[fore_exp.index <= curr_day]
-    
-        curr_real_price = real_price[real_price.index <= curr_day]
-        print(curr_real_price)
-        curr_real_price = self.apply_boll_bands(df_string="bitcoin_Price", 
-                                                price_col="bitcoin_Price",
-                                                ext_df=curr_real_price)
-        forecast = self.arimax.get_forecast(steps=len(curr_fore_exp), exog=curr_fore_exp)
+        forecast_exp = pd.concat([past_df[features], forecast_df[features]])    
         
-        return forecast, curr_real_price
-
-    
-    def prep_forecast(self, features):
-        feat_prep = [x.split(" ")[0] for x in features]
-        feat_prep.append("bitcoin_Price")
-        forecast_exp = self.chart_df[(self.chart_df.index <= self.test.index.max()) & (self.chart_df.index > self.train.index.max())]
-        
-        forecast_exp = self.get_causal_const_shift(forecast_exp, past="all")[feat_prep]
-        real_price = forecast_exp[["bitcoin_Price"]]
-        forecast_exp.drop(columns = ["bitcoin_Price"], inplace=True)
-                
-        return forecast_exp, real_price     
+        return forecast_exp
          
         
     def cross_validate_arimax(self):

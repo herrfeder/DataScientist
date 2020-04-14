@@ -161,8 +161,9 @@ NAVBAR = dbc.Navbar(
        
             dbc.Row(
                 [
-                    dbc.Col(html.A(html.Img(src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Udacity_logo.png", height="20px"), href="https://www.udacity.com")),
-                    dbc.Col(dbc.NavbarBrand("Recommendations with IBM Project"), className="ml-2"),
+                    dbc.Col(html.A(html.Img(src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Udacity_logo.png", height="40px"), href="https://www.udacity.com"), width=1),
+                    dbc.Col(dbc.NavbarBrand(dbc.Row([html.P("DataScience Nanodegree Capstone Project ►", style={"color":"#02b3e4"}),
+                                                     html.P("Multivariate Timeseries Analysis (Stock Market)")], align="center")), width=6),
                     dbc.Col(dbc.DropdownMenu(
                         children=[
                             dbc.DropdownMenuItem("LinkedIn",
@@ -175,12 +176,13 @@ NAVBAR = dbc.Navbar(
                         in_navbar=True,
                         label="by David Lassig",
                         style={"color": "white", "font-size": 10, "font-weight":"lighter"},
-                    )),
+                    ), width=2),
                     
 
                 ],
                 align="center",
                 no_gutters=True,
+                style={"width":"100%"}
             ),
            
         
@@ -195,7 +197,11 @@ NAVBAR = dbc.Navbar(
 
 LEFT_COLUMN = dbc.Jumbotron(
     [
-        html.H4(children="User Selection", className="display-5"),
+        html.H4(children="Project Menu", className="display-5"),
+        html.P(
+            "(Click A Field to continue)",
+            style={"fontSize": 12, "font-weight": "lighter"},
+        ),
         html.Hr(className="my-2"),
         html.Div(make_items(acc_str_list, acc_slider_list), className="accordion"),   
     ]
@@ -419,6 +425,11 @@ FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                                                     options=[
                                                         {'label': 'Arimax Prediction', 
                                                          'value': 'ari'},], value=["ari"]),
+                                            dcc.Checklist(
+                                                    id="gru_check",
+                                                    options=[
+                                                        {'label': 'GRU Prediction', 
+                                                         'value': 'gru'},], value=["gru"]),
                                             
                                             FORE_PAST_SLIDER
                                             ],
@@ -431,7 +442,7 @@ FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                                           ),
                                           dbc.Row(children=[dbc.Col(FORE_SENTIMENTS),
                                                             dbc.Col(FORE_TRENDS),
-                                                            dbc.Col(FORE_STOCKS)])
+                                                            dbc.Col(FORE_STOCKS)], style={"padding-top":"10px"})
                             ])
                         )
              ]
@@ -526,8 +537,10 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
         if sli_05 == 0:
             return MODEL_GRU_EVAL
     elif (acc_str_list[5] in element_id):
-        if sli_06 == 1:
+        if sli_06 == 2:
             return FORE_ALL
+        if sli_06 == 1:
+            return ""
         if sli_06 == 0:
             return ""
 
@@ -536,21 +549,35 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
     Output("fore_plot", "figure"),
     [Input("fore_days_picker", "date"),
      Input("boll_check", "value"),
-     Input("arimax_check", "value"),], 
+     Input("arimax_check", "value"),
+     Input("gru_check", "value")], 
     [State("fore_plot", "figure")])
-def plot_forecast(curr_day, boll_check, arimax_check, figure):
-    curr_fore, curr_real = do_big.ari_forecast_02(curr_day , shift=-31)
-    curr_fore_02, curr_real_02 = do_big.gru_forecast(curr_day, shift=-31)
+def plot_forecast(curr_day, boll_check, arimax_check, gru_check, figure):
+    
+    real_price, real_price_30 = do_big.get_real_price(curr_day, shift=-31)
     
     fig=""
+    
     if arimax_check:
-        fig = ph.get_ari_plot(df=curr_fore, fig="", conf_int=False)
-        fig = ph.get_gru_plot(df=curr_fore_02, fig=fig)
+        ari_fore = do_big.ari_forecast(curr_day , shift=-31)
+        fig = ph.get_ari_plot(df=ari_fore, fig=fig, conf_int=False)
+        
+    if gru_check:
+        gru_fore = do_big.gru_forecast(curr_day, shift=-31)
+        fig = ph.get_gru_plot(df=gru_fore, fig=fig)
+    
     
     if boll_check:
-        return ph.price_plot(curr_real, fig=fig, dash=True)
+        boll_bool = True
     else:
-        return ph.price_plot(curr_real, fig=fig, boll=False, dash=True)
+        boll_bool = False
+        
+    
+    return ph.price_plot(real_price, 
+                         real_30=real_price_30, 
+                         fig=fig, 
+                         boll=boll_bool, 
+                         dash=True)
 
     
 @app.callback(
@@ -663,28 +690,41 @@ def update_sub(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
 
         
     if (acc_str_list[0] in element_id):
-        return "", "", "", "", "", ""
+        if sli_01 == 1:
+            return "See Explanation for this Project", "", "", "", "", ""
+        elif sli_01 == 0:
+            return "See Used Resources", "", "", "", "", ""
     elif (acc_str_list[1] in element_id):
         if sli_02 == 1:
-            return "Show all Input Time Series", "", "", "", "", ""
+            return "", "See all investigated Input Time Series", "", "", "", ""
         elif sli_02 == 0:
-            return "Show all Input Time Series","","", "", "", ""
+            return "","See Conclusions about Input Time Series","", "", "", ""
     elif (acc_str_list[2] in element_id):
         if sli_03 == 2:
-            return "","Simple Correlation between all Input Time Series", "", "", "", ""
+            return "","", "See correlational Analysis of Time Series", "", "", ""
         elif sli_03 == 1:
-            return "","Correlation between timeshifted Time Series", "", "", "", ""
+            return "","See correlational between timeshifted Time Series", "", "", "", ""
         elif sli_03 == 0:
-            return "","Conclusions resulting from Correlation Analysis", "", "", "", ""
+            return "", "", "See Conclusions resulting from Correlation Analysis", "", "", ""
     elif (acc_str_list[3] in element_id):
-        if sli_04 == 1:
-            return "","","blah", "", "", ""
+        if sli_04 == 2:
+            return "", "", "", "See Seasonal Decomposition for Time Series", "", ""
+        elif sli_04 == 1:
+            return "", "", "", "See Granger Causality for Time Series", "", ""
         elif sli_04 == 0:
-            return "","","blubb", "", "", ""
+            return "", "", "", "See Conclusions resulting from Causality Analysis", "", ""
     elif (acc_str_list[4] in element_id):
-        return "", "", "", "", "", ""
+        if sli_05 == 1:
+            return "", "", "", "", "See Cross Validation Results for SARIMAX Model", ""
+        elif sli_05 == 0:
+            return "", "", "", "", "See Cross Validation Results for GRU Model", ""
     elif (acc_str_list[5] in element_id):
-        return "", "", "", "", "", ""
+        if sli_06 == 2:
+            return "", "", "", "", "", "See manual daily forecast for Bitcoin Price"
+        elif sli_06 == 1:
+            return "", "", "", "", "", "See Buy & Sell Market Simulation"
+        elif sli_06 == 0:
+            return "", "", "", "", "", "See Conclusions and Outlook"
 
     
     
@@ -731,5 +771,6 @@ def toggle_active_dot(n1, n2, n3, n4, n5, n6,
     return sty_na, sty_na, sty_na, sty_na, sty_na, sty_na 
            
 
+    
 if __name__ == "__main__":
     app.run_server(debug=True,  port=8050, host="0.0.0.0")
