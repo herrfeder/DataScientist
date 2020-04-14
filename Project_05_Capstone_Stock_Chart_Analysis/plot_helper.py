@@ -26,6 +26,30 @@ def apply_layout(fig, title="", height=1250):
     return fig
 
 
+
+def get_gru_plot(df, fig="", title="", offset=31, dash=False):
+    
+    if not fig:
+        fig = make_subplots(
+                        rows=1, 
+                        cols=1, 
+                        shared_xaxes=True)
+        
+    
+    df_mean = df.rolling(window=10,min_periods=1).mean()
+    
+    fig.add_trace(go.Scatter(x=df.index, 
+                             y=df[0],
+                             line=dict(color='blue'),
+                             name="GRU Prediction"), row=1, col=1)
+    
+    if dash:
+        return apply_layout(fig, title)
+    else:
+        return fig
+    
+
+
 def get_ari_plot(df, fig="", title="", offset=31,conf_int=False, dash=False):
     
     if not fig:
@@ -66,7 +90,7 @@ def get_ari_plot(df, fig="", title="", offset=31,conf_int=False, dash=False):
         return fig
     
 
-def price_plot(df, fig="", title="", boll=True, dash=False, names=["BTC Adjusted Close",
+def price_plot(df, fig="", title="", boll=True, dash=False, names=["BTC Price",
                                            "BTC 30 Day Moving Average",
                                            "BTC Upper Bollinger Band",
                                            "BTC Lower Bollinger Band"]):
@@ -97,6 +121,7 @@ def price_plot(df, fig="", title="", boll=True, dash=False, names=["BTC Adjusted
                                  fillcolor='rgba(231,50,243,0.2)',
                                  line=dict(color='rgba(255,255,255,0)'),
                                  name=names[3]), row=1, col=1) 
+        
         
     if dash:
         return apply_layout(fig, title, height=600)
@@ -265,7 +290,7 @@ def return_cross_val_plot(split_dict, title="", height=1200, dash=False):
                         rows=3, 
                         cols=1, 
                         vertical_spacing=0.08,
-                        subplot_titles=("Split 1", 
+                        subplot_titles=("Split 1\nblah", 
                                         "Split 2", 
                                         "Split 3"))
         
@@ -297,11 +322,13 @@ def return_cross_val_plot(split_dict, title="", height=1200, dash=False):
     
     ## need to add error blah
     
-    #fig.update_yaxes(title_text="Split 1<br>blah", row=1, col=1)
-    #fig.update_yaxes(title_text="Split 2<br>blah", row=2, col=1)
-    #fig.update_yaxes(title_text="Split 3<br>blah", row=3, col=1)
+    #fig.layout.annotations(subplot_titles=["Split 1<br>blah", "", ""])
+    #fig.update_title(title_text="Split 2<br>blah", row=2, col=1)
+    #fig.update_title(title_text="Split 3<br>blah", row=3, col=1)
         
-    if dash:
-        return apply_layout(fig, title, height=height)
-    else:
-        fig.show()
+    #if dash:
+    #    return apply_layout(fig, title, height=height)
+    #else:
+    #    fig.show()
+    
+    return fig

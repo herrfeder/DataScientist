@@ -474,19 +474,20 @@ class ModelData(ShiftChartData):
                                'alibaba_High_prev_month',
                                'amazon_High_prev_month',
                                'economy_pos_sents_prev_month'],
-                 opt_gru_feat = [
-                                 'alibaba_Price_prev_month',
-                                 'alibaba_Low_prev_month',
-                                 'alibaba_High_prev_month',
-                                 'amazon_Price_prev_month',
-                                 'amazon_Low_prev_month',
-                                 'amazon_High_prev_month',
-                                 'googl_Price_prev_month',
-                                 'googl_Low_prev_month',
-                                 'googl_High_prev_month',
-                                 'bitcoin_Google_Trends_prev_month',
-                                 'economy_pos_sents_prev_month',
-                                 'cryptocurrency_Google_Trends_prev_month']):
+                 opt_gru_feat =   [ 'bitcoin_Price_prev_month',
+                                     'alibaba_Price_prev_month',
+                                     #'alibaba_Low_prev_month',
+                                     'alibaba_High_prev_month',
+                                     #'amazon_Price_prev_month',
+                                     #'amazon_Low_prev_month',
+                                     'amazon_High_prev_month',
+                                     #'googl_Price_prev_month',
+                                     #'googl_Low_prev_month',
+                                     #'googl_High_prev_month',
+                                     'bitcoin_Google_Trends_prev_month',
+                                     'economy_pos_sents_prev_month',
+                                     'cryptocurrency_Google_Trends_prev_month',
+                                                                             ]):
         
         super().__init__(fixed_cols, window_size, chart_col)    
                
@@ -501,7 +502,7 @@ class ModelData(ShiftChartData):
         self.gru_model = self.gru_path.format("")
         self.gru_split_model = [self.gru_path.format("_S"+str(i)) for i in range(0,3)]
         self.gru = load_model(self.gru_model)
-        self.gru_timesteps = 60
+        self.gru_timesteps = 5
         self.opt_gru_feat = opt_gru_feat
 
         
@@ -514,46 +515,61 @@ class ModelData(ShiftChartData):
         pass
 
     
-    def gru_forecast(self, curr_day):
-        fore_exp, real_price = self.prep_forecast(self.opt_gru_feat)
+    def gru_forecast(self, curr_day, shift=-31):
         
-        curr_fore_exp = fore_exp[fore_exp.index <= curr_day]
-        print(fore_exp.shape)
-
-        curr_real_price = pd.DataFrame(real_price[real_price.index <= curr_day])
-
-        sca_fore, fore_tra, sca_real, real_tra = self.return_scaled_test(curr_fore_exp, curr_real_price)
-        print(np.shape(sca_fore))
+        feat_prep = [x.replace("_prev_month","{}") for x in self.opt_gru_feat]
+        now_feat = [x.format("") for x in feat_prep]
         
-        mse, rmse, r2_value,true,predicted = evaluate_model(self.gru,sca_fore,self.gru_timesteps)
-
-        predicted = real_tra.inverse_transform(predicted.reshape(-1,1))
+        past_df = self.test[self.test.index <= curr_day]
         
-        forecast = pd.DataFrame(predicted, index=curr_real_price.index)
-        
-        return forecast, curr_real_price 
-        
-    
-    
-    def ari_forecast_02(self, curr_day, shift=-31):
-        
-        feat_prep = [x.replace("_prev_month","{}") for x in self.opt_ari_feat]
-        
-        fore_cast = self.test[self.test.index <= curr_day].iloc[shift:,:][self.opt_ari_feat]
+        forecast_df = past_df.iloc[shift:,:][now_feat]
         
         real_price = self.test[self.test.index <= curr_day][["bitcoin_Price"]]
         curr_real_price = self.apply_boll_bands(df_string="bitcoin_Price", 
                                                 price_col="bitcoin_Price",
                                                 ext_df=real_price)
         
-        fore_cast.index = fore_cast.index + DateOffset(abs(shift))
+        forecast_df.index = forecast_df.index + DateOffset(abs(shift))
         
         future_dict = {x.format(""):x.format("_prev_month") for x in feat_prep}
-        fore_cast.rename(columns=future_dict, inplace=True)
+        forecast_df.rename(columns=future_dict, inplace=True)
         
-        shift_df = self.test[self.test.index <= curr_day]
+        forecast_exp = pd.concat([past_df[self.opt_gru_feat], forecast_df[self.opt_gru_feat]])
+
+        sca_fore, fore_tra, sca_price, price_tra = self.return_scaled_test(forecast_exp,
+                                                                           forecast_exp[["bitcoin_Price_prev_month"]])
         
-        forecast_exp = pd.concat([shift_df[self.opt_ari_feat], fore_cast[self.opt_ari_feat]])
+        mse, rmse, r2_value,true,predicted = evaluate_model(self.gru, sca_fore, self.gru_timesteps)
+
+        predicted = price_tra.inverse_transform(predicted)
+        true = price_tra.inverse_transform(true.reshape(1,-1))
+        
+        forecast = pd.DataFrame(predicted, index=forecast_exp.iloc[:(self.gru_timesteps)*-1,:].index)
+        
+        return forecast, curr_real_price
+        
+    
+    
+    def ari_forecast_02(self, curr_day, shift=-31):
+        
+        feat_prep = [x.replace("_prev_month","{}") for x in self.opt_ari_feat]
+        now_feat = [x.format("") for x in feat_prep]
+        
+        past_df = self.test[self.test.index <= curr_day]
+        
+        forecast_df = past_df.iloc[shift:,:][now_feat]
+        
+        real_price = self.test[self.test.index <= curr_day][["bitcoin_Price"]]
+        curr_real_price = self.apply_boll_bands(df_string="bitcoin_Price", 
+                                                price_col="bitcoin_Price",
+                                                ext_df=real_price)
+        
+        forecast_df.index = forecast_df.index + DateOffset(abs(shift))
+        
+        future_dict = {x.format(""):x.format("_prev_month") for x in feat_prep}
+        forecast_df.rename(columns=future_dict, inplace=True)
+        
+        forecast_exp = pd.concat([past_df[self.opt_ari_feat], forecast_df[self.opt_ari_feat]])
                 
         forecast = self.arimax.get_forecast(steps=len(forecast_exp), exog=forecast_exp)
 

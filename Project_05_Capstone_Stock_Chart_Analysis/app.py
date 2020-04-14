@@ -63,8 +63,8 @@ acc_slider_list = [["Introduction", "Resources"],
                    ["View Data","Conclusions"],
                    ["Simple Correlation", "Correlation Timeshift", "Conclusions"],
                    ["Seasonal Analysis", "Granger Causality", "Conclusions"],
-                   ["ARIMAX", "VAR", "GRU"],
-                   ["Forecast", "Chances and next Steps"]]
+                   ["ARIMAX", "GRU"],
+                   ["Forecast", "Buying Simulation", "Chances and next Steps"]]
     
 # Load data
 
@@ -521,7 +521,7 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
             return ""
         
     elif (acc_str_list[4] in element_id):
-        if sli_05 == 2:
+        if sli_05 == 1:
             return MODEL_SARIMAX_EVAL
         if sli_05 == 0:
             return MODEL_GRU_EVAL
@@ -540,11 +540,12 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
     [State("fore_plot", "figure")])
 def plot_forecast(curr_day, boll_check, arimax_check, figure):
     curr_fore, curr_real = do_big.ari_forecast_02(curr_day , shift=-31)
-    curr_fore_02, curr_real_02 = do_big.gru_forecast(curr_day)
+    curr_fore_02, curr_real_02 = do_big.gru_forecast(curr_day, shift=-31)
     
     fig=""
     if arimax_check:
         fig = ph.get_ari_plot(df=curr_fore, fig="", conf_int=False)
+        fig = ph.get_gru_plot(df=curr_fore_02, fig=fig)
     
     if boll_check:
         return ph.price_plot(curr_real, fig=fig, dash=True)
