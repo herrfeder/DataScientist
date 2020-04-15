@@ -1,3 +1,19 @@
+resources = """
+  * https://www.analyticsvidhya.com/blog/2018/09/multivariate-time-series-guide-forecasting-modeling-python-codes/
+  * https://www.analyticsvidhya.com/blog/2018/09/non-stationary-time-series-python/
+  
+## Causality Resources
+  * Explanation of Difference Correlation and Causalisation: https://calculatedcontent.com/2013/05/27/causation-vs-correlation-granger-causality/
+  * Used Function from: https://www.machinelearningplus.com/time-series/vector-autoregression-examples-python/
+
+## SARIMAX Resources
+
+  * Good Overview about ARIMA Models: https://www.machinelearningplus.com/time-series/arima-model-time-series-forecasting-python/
+  * How to prepare Explanatory Variables for Multivariate SARIMAX Model: https://www.kaggle.com/viridisquotient/arimax
+  * How to prepare Time Series data for Multivariate SARIMAX Model: https://www.machinelearningplus.com/time-series/time-series-analysis-python/
+
+"""
+
 granger_prob_expl = """
 #### Granger Causality tests on a Null hypothesis:
 
