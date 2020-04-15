@@ -1,8 +1,10 @@
+# 00 Scraping Tweets for Keyword Sentiments
+
 import twint
 from datetime import date, timedelta
 import time
 
-# I'm using this function with the library/tool twint to collect a maximum of 500 tweets for every day 
+# I'm using this function with the library/tool twint (https://github.com/twintproject/twint) that allows for APIless Twitter Scraping to collect a maximum of 500 tweets for every day 
 # between 00:00:00 and 15:00:00 for the last 5 years
 
 def collect_daily_tweets(search):

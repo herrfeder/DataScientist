@@ -21,7 +21,7 @@ df = data_prep_helper.ShiftChartData.get_causal_const_shift(do.chart_df,)
 
 ext_cols = []
 for col in df.columns:
-    if (col.endswith('month')) or (col.endswith('week')) or (col.startswith('month')):
+    if (col.endswith('month')) :
         ext_cols.append(col)
         
 def feature_comb_iter(i):
@@ -59,4 +59,4 @@ def feature_comb_iter(i):
 if __name__ == '__main__':
     #pool = Pool(4)           # Create a multiprocessing Pool
     #pool.map(feature_comb_iter, range(4,10))  # process range
-    feature_comb_iter(6)
+    feature_comb_iter(7)
