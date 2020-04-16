@@ -14,6 +14,14 @@ resources = """
 
 """
 
+view_data_conclusion = """
+## Conclusions from Viewing the Data
+
+  * Gold behaves highly differently compared to Bitcoin
+  * the other Stock Charts share some similarities with Bitcoin regarding peaks and bottoms --> deeper investigation
+  * from the first point of view the Twitter Sentiments and Google Trends doesn't share any similarity with Bitcoin Chart --> deeper investigation
+"""
+
 granger_prob_expl = """
 #### Granger Causality tests on a Null hypothesis:
 

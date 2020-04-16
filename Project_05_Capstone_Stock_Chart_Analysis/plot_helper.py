@@ -265,10 +265,12 @@ def plot_val_heatmap(df, title="", height=1000, colormap="viridis", colorbar="Co
         fig.show()
         
         
-def return_shift_corr(do, fixed="bitcoin_Price", shift=-30, output="multi",dash=False):
+def return_shift_corr(do, fixed="bitcoin_Price", shift=-30, output="multi",dash=False, cols=""):
+    
     
     do.fixed_cols = fixed
-    corr = do.single_shift(shift).corr()
+    shift_df = do.single_shift(shift, cols)
+    corr = shift_df.corr()
     
     if output=="single":
         corr = corr[corr.index == fixed]

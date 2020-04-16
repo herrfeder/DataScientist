@@ -252,17 +252,19 @@ class ShiftChartData(ChartData):
             return fixed_cols
     
     
-    def get_shift_cols(self):
-        cols = list(self.chart_df.columns)
+    def get_shift_cols(self, ext_cols=""):
+        if ext_cols:
+            cols = ext_cols
+        else:
+            cols = list(self.chart_df.columns)
         for fix_col in self._fixed_cols:
             cols.remove(fix_col)
         
         return cols
     
         
-    def single_shift(self, shift_val=-1):
-        cols = self.get_shift_cols()
-            
+    def single_shift(self, shift_val=-1, ext_cols=""):
+        cols = self.get_shift_cols(ext_cols)
         df = self.chart_df[self.fixed_cols]
         for col in cols:
             df[col+"_"+str(shift_val)] = self.chart_df[col].shift(shift_val)

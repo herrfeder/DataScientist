@@ -29,29 +29,39 @@ import conclusion_texts
 from dash.dependencies import Input, Output, State
 from plotly import tools
 
+
+# set base app directory path
 APP_PATH = pathlib.Path(__file__).parent.resolve()
 
+# prepare the DataSet with all Input Time Series
 do_big = data_prep_helper.ModelData(chart_col=["Price", "High", "Low", "Price_norm"])
-do_small = data_prep_helper.ShiftChartData(chart_col="Price")
 
+# smaller subset of columns for some visualisation use cases
+small_col_set = ['bitcoin_Price', 'sp500_Price', 'dax_Price', 'googl_Price',
+                 'gold_Price', 'alibaba_Price', 'amazon_Price', 'bitcoin_Google_Trends',
+                 'cryptocurrency_Google_Trends', 'trading_Google_Trends',
+                 'bitcoin_pos_sents', 'bitcoin_neg_sents', 'bitcoin_quot_sents',
+                 'economy_pos_sents', 'economy_neg_sents', 'economy_quot_sents']
 
-BASE_COLUMNS = list(do_small.chart_df.columns)
-
-FORE_DAYS = do_big.get_forecast_dates()
-
+# columns for drop dowwn
+BASE_COLUMNS = list(do_big.chart_df[small_col_set])
 
 column_small_labels = []
 for col in BASE_COLUMNS:
     column_small_labels.append({"label": col,
                                 "value": col,
                                 })
-    
+
+# dates for prediction range
+FORE_DAYS = do_big.get_forecast_dates()
+
 fore_days_labels = []
 for day in FORE_DAYS:
     fore_days_labels.append({"label": day,
                              "value": day})
-    
 
+
+# Lists for Project Menu    
 acc_str_list = ["A Introduction",
                 "B View Data", 
                 "C Correlation Analysis",
@@ -66,12 +76,46 @@ acc_slider_list = [["Introduction", "Resources"],
                    ["ARIMAX", "GRU"],
                    ["Forecast", "Buying Simulation", "Chances and next Steps"]]
     
-# Load data
 
 
+### Prepared Visualisations for speeding up web app ###
+
+# Load static dataset for Granger Causality plot as live build would take to long
 GRANGER_PATH = APP_PATH.joinpath("data/granger_causality.csv")
+GRANGER_PLOT = ph.return_granger_plot(GRANGER_PATH, title="", colormap="viridis_r", dash=True)
+
+# static visualisation for viewing all input data sets
+VIEW_DATA_FIG = ph.exploratory_plot(do_big.apply_boll_bands("bitcoin_hist",
+                                                              append_chart=False), title="", dash=True)
+
+CORR_STATIC_FIG = ph.plot_val_heatmap(do_big.chart_df[small_col_set].corr(), 
+                                          title="", 
+                                          dash=True)
+
+SEASON_PLOT = ph.return_season_plot(do_big.chart_df[small_col_set], 
+                                    "bitcoin_Price", 
+                                    title="", 
+                                    dash=True)
+
+CROSS_VAL_ARIMAX = ph.return_cross_val_plot(do_big.cross_validate_arimax(),
+                                            title="",
+                                            dash=True)
+
+CROSS_VAL_GRU = ph.return_cross_val_plot(do_big.cross_validate_gru(),
+                                         title="",
+                                         dash=True)
 
 def make_items(acc_str_list, acc_slider_list):
+    '''
+    Populates Bootstrap accordion Menu with sub menu sliders from given input arguments.
+    The given DOM id's are crucial for app callbacks, therefore shouldn't be modified.
+    
+    INPUT:
+        acc_str - (list) List of strings with Top Menu Bullets
+        acc_slider_list - (list of lists) List of list with strings for sub Menu Slider
+    OUTPUT:
+        card_list - (list of dash HTML objects) Will hold all menu points and submenu slider 
+    '''
     card_list = []
     for acc_str, acc_slider in zip(acc_str_list, acc_slider_list):
         card_list.append(dbc.Card(
@@ -128,6 +172,17 @@ def make_items(acc_str_list, acc_slider_list):
 
 
 def build_growth_content(growth_dict, cols):
+    '''
+    Populates table like HTML Elements from input dict. Used for seeing mean growth in percent of specific time series over time.
+    Will color entry red for negative growth and green for positive growth.
+    
+    INPUT:
+        growth_dict - ({str:float}) Holds column name as key and growth index as value
+        cols - (list of str) Holds the column names that should be populated from input dict
+    OUTPUT:
+        dbc.Row - (dash HTML object) Holds the table like HTML elements
+    '''
+    
     col_col = []
     val_col = []
     
@@ -149,13 +204,9 @@ def build_growth_content(growth_dict, cols):
                     
                     
 
-exploratory_fig = ph.exploratory_plot(do_big.apply_boll_bands("bitcoin_hist",
-                                                              append_chart=False), title="", dash=True)
-corr_01_matrix_plot = ph.plot_val_heatmap(do_small.chart_df.corr(), 
-                                          title="", 
-                                          dash=True)
 
-# NAVBAR always on top of website
+
+# NAVBAR
 NAVBAR = dbc.Navbar(
     children=[
        
@@ -163,7 +214,7 @@ NAVBAR = dbc.Navbar(
                 [
                     dbc.Col(html.A(html.Img(src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Udacity_logo.png", height="40px"), href="https://www.udacity.com"), width=1),
                     dbc.Col(dbc.NavbarBrand(dbc.Row([html.P("DataScience Nanodegree Capstone Project ►", style={"color":"#02b3e4"}),
-                                                     html.P("Multivariate Timeseries Analysis (Stock Market)")], align="center")), width=6),
+                                                     html.P("Multivariate Timeseries Analysis (Stock Market)")], align="center")), width=9),
                     dbc.Col(dbc.DropdownMenu(
                         children=[
                             dbc.DropdownMenuItem("LinkedIn",
@@ -193,7 +244,7 @@ NAVBAR = dbc.Navbar(
 )
 
 
-
+### BASIC WEB APP LAYOUT ###
 
 LEFT_COLUMN = dbc.Jumbotron(
     [
@@ -207,6 +258,7 @@ LEFT_COLUMN = dbc.Jumbotron(
     ]
 )
 
+
 RIGHT_COLUMN = html.Div(id="right_column", children=[dcc.Loading(id="right_column_loading")])
 
 
@@ -214,17 +266,17 @@ RIGHT_COLUMN = html.Div(id="right_column", children=[dcc.Loading(id="right_colum
 
 INTRODUCTION = html.Div(dcc.Markdown(conclusion_texts.introduction), id="introduction")
 
-RESOURCES = ""
+RESOURCES = html.Div(dcc.Markdown(conclusion_texts.resources), id="resources")
 
 
 ### B VIEW DATA ###
 
 EXP_CHART_PLOT = [dbc.CardHeader(html.H5("Historic Input Datasets")),
               dbc.CardBody(dcc.Loading(dcc.Graph(id="exp_chart_plot",
-                           figure=exploratory_fig)))
+                           figure=VIEW_DATA_FIG)))
              ]
 
-VIEW_CONCLUSIONS = ""
+VIEW_CONCLUSIONS = html.Div(dcc.Markdown(conclusion_texts.view_data_conclusion), id="resources")
 
 
 ### C CORRELATION ANALYSIS ###
@@ -244,15 +296,15 @@ CORR_SHIFT_SLIDER = html.Div(children=[
                                             "style": {"color": "#7fafdf"},
                                         }
                                         for day_shift in range(-50,5,5) },
-                            min=-50,
-                            max=0,
-                            step=1,
-                            value=-30,),
+                                min=-50,
+                                max=0,
+                                step=1,
+                                value=-30,),
                     ],style={"width":"40%"})
 
 CORR_01_CHART_PLOT = [dbc.CardHeader(html.H5("Correlation Matrix for all Input Time Series")),
               dbc.CardBody(dcc.Loading(dcc.Graph(id="corr_01_matrix_plot",
-                           figure=corr_01_matrix_plot)))
+                           figure=CORR_STATIC_FIG)))
              ]
 
 CORR_02_CHART_PLOT = [dbc.CardHeader(html.H5("Correlation Matrix with User-Defined Time Shift")),
@@ -275,10 +327,13 @@ CORR_02_CHART_PLOT = [dbc.CardHeader(html.H5("Correlation Matrix with User-Defin
                                 
                                           dcc.Loading(
                                               dcc.Graph(id="corr_shift_matrix_plot",
-                                                        figure=ph.return_shift_corr(do_small,
+                                                        figure=ph.return_shift_corr(do_big, 
                                                                                     "bitcoin_Price", 
                                                                                     -30, 
-                                                                                    dash=True))
+                                                                                    output="single",
+                                                                                    dash=True, 
+                                                                                    cols=small_col_set))
+                                              
                                           )             
                             ])
                         )
@@ -309,10 +364,7 @@ CAUS_SEASONAL_PLOT = [dbc.CardHeader(html.H5("Seasonal Decomposition")),
                                             
                                             dcc.Loading(
                                                 dcc.Graph(id="caus_seasonal_plot",
-                                                          figure=ph.return_season_plot(do_small.chart_df, 
-                                                                                       "bitcoin_Price", 
-                                                                                       title="", 
-                                                                                       dash=True)))
+                                                          figure=SEASON_PLOT))
                                          ]))
                      ]
 
@@ -329,10 +381,7 @@ CAUS_GRANGER_PLOT = [dbc.CardHeader(html.H5("Granger Causality with Time Lag of 
                                             style={"background-color": "#073642", "border-radius": "0.3rem"}),
                                         dcc.Loading(
                                             dcc.Graph(id="caus_granger_plot",
-                                                      figure=ph.return_granger_plot(GRANGER_PATH,  
-                                                                                    title="",
-                                                                                    colormap="viridis_r",
-                                                                                    dash=True)))
+                                                      figure=GRANGER_PLOT))
                          ]
                                          ))]
 
@@ -344,9 +393,7 @@ MODEL_SARIMAX_EVAL = [dbc.CardHeader(html.H5("Model SARIMAX Cross Validation")),
                          html.Div(children=[
                                         dcc.Loading(
                                             dcc.Graph(id="sarimax_cross_validation",
-                                                      figure=ph.return_cross_val_plot(do_big.cross_validate_arimax(),
-                                                                                      title="",
-                                                                                      dash=True)))
+                                                      figure=CROSS_VAL_ARIMAX))
                          ]
                                          ))]
 
@@ -355,16 +402,13 @@ MODEL_GRU_EVAL = [dbc.CardHeader(html.H5("Model GRU Cross Validation")),
                          html.Div(children=[
                                         dcc.Loading(
                                             dcc.Graph(id="gru_cross_validation",
-                                                      figure=ph.return_cross_val_plot(do_big.cross_validate_gru(),
-                                                                                      title="",
-                                                                                      dash=True)))
+                                                      figure=CROSS_VAL_GRU))
                          ]
                                          ))]
 
 
 
 ### F FORECAST ###
-
 
 FORE_DAYS_PICKER =  html.Div([   
     dcc.DatePickerSingle(
@@ -465,9 +509,8 @@ BODY = dbc.Container([
             )], fluid=True)
 
 
-### Init webapp ###
 
-
+### WEBAPP INIT ###
 app = dash.Dash(__name__, 
                 external_stylesheets=[dbc.themes.SOLAR], 
                 url_base_pathname="/bitcoinprediction/",
@@ -484,13 +527,10 @@ app.scripts.config.serve_locally = True
 server = app.server
 
 
-
-
+### CALLBACKS ###
 
 acc_input = [Input(f"group-{i}-toggle", "n_clicks") for i in acc_str_list]
 acc_input.extend([Input(f"slider-{i}", "value") for i in acc_str_list])
-
-
 @app.callback(
     Output("right_column_loading", "children"),
     acc_input,
@@ -622,7 +662,7 @@ def fill_fore_blocks(curr_day, past ,figure):
 )
 def ret_caus_seasonal_plot(dropdown, figure):
     
-    return ph.return_season_plot(do_small.chart_df, dropdown, title="", dash=True)
+    return ph.return_season_plot(do_big.chart_df[small_col_set], dropdown, title="", dash=True)
     
     
 @app.callback(
@@ -632,7 +672,7 @@ def ret_caus_seasonal_plot(dropdown, figure):
 )
 def ret_corr_shift_plot(n, dropdown, slider):
     
-    return ph.return_shift_corr(do_small, dropdown, slider, output="single",dash=True)
+    return ph.return_shift_corr(do_big, dropdown, slider, output="single",dash=True, cols=small_col_set)
     
     
 @app.callback(
