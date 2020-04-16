@@ -1,6 +1,4 @@
 import pandas as pd
-from IPython.core import debugger
-debug = debugger.Pdb().set_trace
 import pathlib
 import os
 import sys
@@ -16,11 +14,32 @@ from datetime import datetime
 
 
 class ChartData():
-    
+    '''
+    ChartData acts as the Data Preprocessing Unit. It reads all collected Time Series
+            - Multiple Financial Chart Data from Investing.com with similiar structure
+            - Self generated google trends dataset for several keywords
+            - Self generated twitter sentiments datasets for keywords "bitcoin" and "#economy"
+    and aggregates them into a single DataFrame chart_df with Datetime index.
+    '''
     def __init__(self, window_size=30, chart_col="Price"):
+        '''
+        Reads input arguments and does the most of data input processing
+            - Read CSV's into dict of dataframes df_d
+            - Clean and prepare stock market datasets
+            - Clean and prepare google trend dataset
+            - Clean and prepare twitter sentiment datasets
+            - Merging all datasets into single DataFrame (merge_dict_to_chart_df)
+        
+        INPUT:
+            window_size - (int) Defines the Moving Average Window for generating the Bollinger Bands
+            chart_col - (str/list of str) Gives the column/s that will be taken from the chart df input data
+                        into the resulting chart_df
+        '''
     
         charts = ["bitcoin_hist", "sp500_hist", "dax_hist", "googl_hist", "gold_hist", "alibaba_hist", "amazon_hist"]
         sents = ["bitcoin_sent_df", "economy_sent_df"]
+        
+        self.window_size = window_size
         
         self._chart_df = ""
         
@@ -84,9 +103,23 @@ class ChartData():
     def apply_boll_bands(self, 
                          df_string="", 
                          price_col="Price", 
-                         window_size=30, 
+                         window_size=0, 
                          append_chart=False, 
                          ext_df=pd.DataFrame()):
+        '''
+        Calculates Bollinger Bands for chart_df or given external DataFrame
+        
+        INPUT:
+            df_string - (str) key name for the DataFrame in the dataframe dict df_d to process Bollinger Bands for
+            price_col - (str) Column name in the stock market DataFrame to calculate Bollinger Bands for
+            window_size - (int) Override class window size for calculating Bollinger Bands
+            append_chart - (bool) On True resulting columns will be attached and stored to class owned chart_df
+                           on False resulting columns will be returned with class owned chart_df
+            ext_df - (DataFrame) Will use external DataFrame for applying Bollinger Bands
+        OUTPUT:
+            dataframe - (DataFrame) On "append_chart=False" returns input DataFrame with concat columns
+                        "prefix_30_day_ma", "prefix_30_day_std", "prefix_boll_up", "prefix_boll_low"
+        '''
         try:
             if not ext_df.empty:
                 df = ext_df
@@ -94,6 +127,9 @@ class ChartData():
                 df = self.df_d[df_string]
         except:
             print("Not found this DataFrame name")
+            
+        if window_size== 0:
+            window_size = self.window_size
         
         prefix = df_string.split("_")[0]
         
@@ -111,9 +147,22 @@ class ChartData():
             else:
                 return self.append_to_chart_df(df[["30_day_ma", "30_day_std", "boll_upp", "boll_low"]], prefix, inplace=False)
         
-    def prep_charts(self, chart_df_str, norm=False):
+        
+    def prep_charts(self, df_string, norm=False):
+        '''
+        Cleans and processes input stock chart datasets from Investing.com
+            - by converting stringified numbers to float
+            - converting human readable strings like "10k", "4M" to float
+            - setting Datetime as index
+        
+        INPUT:
+            df_string - (str) key name for the DataFrame in the dataframe dict df_d
+            norm - (bool) On true adding an maximum normalized Price column
+        OUTPUT:
+            df - (DataFrame) returns input DataFrame with processed data
+        '''
         try:
-            df = self.df_d[chart_df_str]
+            df = self.df_d[df_string]
         except:
             print("Not found this DataFrame name")
         
@@ -135,9 +184,19 @@ class ChartData():
         return df
 
     
-    def prepare_trend(self, trend_df_str):
+    def prepare_trend(self, df_string):
+        '''
+        The Google Trends data consists of hourly collected data points.
+        Setting Datetime index and resample hourly data to daily time series.
+        
+        
+        INPUT:
+            df_string - (str) key name for the DataFrame in the dataframe dict df_d
+        OUTPUT:
+            df - (DataFrame) returns input DataFrame with processed data
+        '''
         try:
-            df = self.df_d[trend_df_str]
+            df = self.df_d[df_string]
         except:
             print("Not found this DataFrame name")
             return
@@ -149,9 +208,19 @@ class ChartData():
         
         return df
         
-    def prepare_sent(self, sent_df_str):
+    def prepare_sent(self, df_string):
+        '''
+        Setting Datetime index and adding additional column with quotient of
+        positive and negative sentiments.
+        
+        
+        INPUT:
+            df_string - (str) key name for the DataFrame in the dataframe dict df_d
+        OUTPUT:
+            df - (DataFrame) returns input DataFrame with processed data
+        '''
         try:
-            df = self.df_d[sent_df_str]
+            df = self.df_d[df_string]
         except:
             print("Not found this DataFrame name")
             return
@@ -162,8 +231,20 @@ class ChartData():
         df["quot"] = df["pos"] / df["neg"]
         
         return df
+    
 
     def merge_dict_to_chart_df(self, chart_col=["Price"]):
+        '''
+        Merges all input DataFrames in df_d into a single DataFrame chart_df
+        with a joint Datetime daily index. All original column names get a prefix. 
+        The selected DataFrame names are hardcoded right now and could be updated to a generic function.
+        
+        INPUT:
+            chart_col - (list of str) Contains the column names that should be selected from the stock market
+                        datasets
+        OUTPUT:
+            none - Result will be stored into class owned chart_df
+        '''
         
         if not isinstance(chart_col, list):
             chart_col = [chart_col]
@@ -198,8 +279,20 @@ class ChartData():
         self.chart_df = self.chart_df.resample('D').interpolate()
 
             
-    def append_to_chart_df(self, append_df, prefix_name, right_key="Date", inplace=False):
+    def append_to_chart_df(self, append_df, prefix_name, inplace=False):
+        '''
+        Will append an DataFrame with prefixed column names to chart_df and will store it there
+        or return it to function caller. The concatination/merging will happen with
+        Datetime index as key.
         
+        INPUT:
+            append_df - (DataFrame) DataFrame to append to chart_df, must have Datetime index
+            prefix_name - (str) string to prepend to the column_names of append_df on merging
+            inplace - (bool) on true appends to chart_df, on false returns to function caller
+        OUTPUT:
+            dataframe - (DataFrame) on inplace==False the merged DataFrame will be returned
+            
+        '''
         append_df.columns = ["{}_{}".format(prefix_name, col) for col in append_df.columns]
         if not inplace:
             return self.chart_df.merge(append_df, left_index=True, right_index=True)
@@ -208,6 +301,19 @@ class ChartData():
             
             
     def get_growth(self, day, past, cols=["bitcoin_Price"]):
+        '''
+        Calculates linear growth of timeseries values in timespan given by "past" from date
+        given by "day". It will apply a moving average to the extracted span and
+        returns the resulting growth percentage between first and last value of span.
+        
+        INPUT:
+            day - (str "2019-01-01") date from which a timespan into past will be taken
+            past - (int) timespan for growth calculation
+            cols - (list of str) column/s for which the growth has to be calculated
+        OUTPUT:
+            growth_dict (dict) holds column names as keys and calculated growth as values
+        '''
+        
         
         past_days = past
         window = int(np.round(abs(past_days)/2))
@@ -223,9 +329,21 @@ class ChartData():
             
         return growth_dict
         
+        
 
 class ShiftChartData(ChartData):
+    '''
+    Takes over class methods from ChartData and adds functions for splitting and shifting data
+    for Feature Engineering and Model preparation.
+    '''
     def __init__(self, fixed_cols="bitcoin_Price", window_size=30, chart_col="Price"):
+        '''
+        Takes arguments from ChartData and adds fixed_cols to know which columns should be
+        fixed while the others are shifted in time.
+        
+        INPUT:
+            fixed_cols - (str/list of str) will be checked on existence in chart_df on any change
+        '''
         super().__init__(window_size, chart_col)    
         
         self._fixed_cols = fixed_cols
@@ -238,6 +356,9 @@ class ShiftChartData(ChartData):
     
     @fixed_cols.setter
     def fixed_cols(self, fixed_cols):
+        '''
+        fixed_cols setter will check existence of all added columns
+        '''
         if not isinstance(fixed_cols, list):
             fixed_cols = [fixed_cols]
             
@@ -245,6 +366,16 @@ class ShiftChartData(ChartData):
     
     
     def check_fixed_cols(self, fixed_cols):
+        '''
+        Checks on existence of given fixed_cols in chart_df. If existent,
+        returns fixed_cols, if not will return first columnname.
+        
+        INPUT:
+            fixed_cols - (str/list of str) columns to fix on shifting
+        OUTPUT:
+            fixed_cols - (str/list of str) if all columns in fixed_cols exists in chart_df
+                         they will be returned, if not the first columnname of chart_df will be returned
+        '''
         if not len(set(fixed_cols).intersection(set(self.chart_df.columns))) == len(fixed_cols):
             print("This Column {} doesn't exist in chart_df, using first column instead".format(fixed_cols))
             return [self.chart_df.columns[0]]
@@ -253,6 +384,14 @@ class ShiftChartData(ChartData):
     
     
     def get_shift_cols(self, ext_cols=""):
+        '''
+        Get the columns that have to be shifted.
+        
+        INPUT:
+            ext_cols - (list of str) Using not all chart_df columns for shifting
+        OUTPUT:
+            cols - (list of str) Columns to shift with removed fixed columns
+        '''
         if ext_cols:
             cols = ext_cols
         else:
@@ -264,6 +403,16 @@ class ShiftChartData(ChartData):
     
         
     def single_shift(self, shift_val=-1, ext_cols=""):
+        '''
+        
+        
+        INPUT:
+            shift_val - (int) day-based level of shifting
+            ext_cols - (list of str) Using not all columns for shifting
+
+        OUTPUT:
+            df - (DataFrame) with fixed and timeshifted columns
+        '''
         cols = self.get_shift_cols(ext_cols)
         df = self.chart_df[self.fixed_cols]
         for col in cols:
@@ -273,6 +422,15 @@ class ShiftChartData(ChartData):
     
     
     def gen_multi_shift(self, shift_arr=[ 2, 1, 0, -1, -2]):
+        '''
+        Generator that returns one shift per iteration from range in shift_arr.
+        
+        INPUT:
+            shift_arr - (list of int) Range for generator based shifting
+        OUTPUT:
+            (shift_val, df) - Generator(int, DataFrame) shift value and DataFrame with shifted
+                              and fixed columns
+        '''
         cols = self.get_shift_cols()
         
         df = self.chart_df[self.fixed_cols]
@@ -281,9 +439,22 @@ class ShiftChartData(ChartData):
                 df[col] = self.chart_df[col].shift(shift_val)
             yield shift_val, df
             
+            
     @staticmethod
     def get_most_causal_cols(df, past=""):
+        '''
+        Prepares list of columns to return after shifting 
+        as DataFrame becomes really big. Holds some static feature sets
+        that where identified by previous analysis.
         
+        INPUT:
+            df - (DataFrame) with shifted columns
+            past - (str) returning all past shifts or only week/month specific
+        OUTPUT:
+            df - (DataFrame) with selected shifted columns
+        '''
+        
+        # opt cols from Granger Causality
         opt_cols = ['bitcoin_Price', 'bitcoin_High', 'bitcoin_Google_Trends_prev_month',
                     'bitcoin_Google_Trends_prev_week', 'alibaba_High_prev_week',
                     'alibaba_Price_prev_week', 'bitcoin_Low_prev_month',
@@ -300,6 +471,7 @@ class ShiftChartData(ChartData):
                     'amazon_Price_prev_week', 'amazon_High_prev_week', 'sp500_High',
                     'amazon_Low', 'googl_Price', 'economy_pos_sents_prev_week', 'economy_pos_sents_prev_month']
         
+        # opt cols from Feature Optimization
         arimax_opt_cols = [
                    'bitcoin_Price_prev_week',
                    'bitcoin_Price_prev_month',
@@ -313,6 +485,7 @@ class ShiftChartData(ChartData):
                    ]
         
         
+        # all basic time series in chart_df
         cols =   ['bitcoin_Price',
                  'bitcoin_High',
                  'bitcoin_Low',
@@ -330,12 +503,16 @@ class ShiftChartData(ChartData):
                  'economy_pos_sents']
         
         week_cols = ["{}_prev_week".format(col) for col in cols]
+        weeks2_cols = ["{}_prev_2weeks".format(col) for col in cols]
         month_cols = ["{}_prev_month".format(col) for col in cols]
         
         if past=="now":
             return df[cols]
         elif past=="week":
             week_cols.extend(["month-1","month-2"])
+            return df[week_cols]
+        elif past=="2weeks":
+            weeks2_cols.extend(["month-1","month-2"])
             return df[week_cols]
         elif past=="month":
             month_cols.extend(["month-1","month-2"])
@@ -344,6 +521,7 @@ class ShiftChartData(ChartData):
             return df[arimax_opt_cols]
         elif past=="all":
             week_cols.extend(month_cols)
+            week_cols.extend(weeks2_cols)
             week_cols.extend(cols)
             all_cols = week_cols
             all_cols.extend(["month-1","month-2"])
@@ -352,8 +530,19 @@ class ShiftChartData(ChartData):
         else:
             return df[opt_cols]
     
+    
     @staticmethod
     def get_dummy_months(df):
+        '''
+        Return df with dummy variables for the last three months holding binary 1's and
+        0's for beeing in this month or not.
+        
+        INPUT:
+            df - (DataFrame) to add dummy months for
+        OUTPUT:
+            df - (DataFrame) with added dummy months
+        
+        '''
         months = df.index.month
         dummy_months = pd.get_dummies(months)
         dummy_months.columns = ['month-%s' % m for m in range(1,len(dummy_months.columns)+1)]
@@ -363,9 +552,20 @@ class ShiftChartData(ChartData):
         
         return df
     
+    
     @staticmethod
     def get_causal_const_shift(df, past="", zeros="cut"):
+        '''
+        Returns single train-test split.
         
+        INPUT:
+            split_factor - (int/float) if int bigger 1 it will take row number for split
+                           if float smaller 1 it will take percentage proportion for split
+            past - (str) returning all past shifts or only week/month specific
+            zeros - (str) the produced zeros after shifting will be "cut" or filled with "zero"
+        OUTPUT:
+            (train, test) - (DataFrame, DataFrame) splitted train and test datasets
+        '''
         df = ShiftChartData.get_dummy_months(df)
         
         causal_cols = ["bitcoin_Price", 
@@ -406,7 +606,20 @@ class ShiftChartData(ChartData):
         
         return ShiftChartData.get_most_causal_cols(df, past)
     
+    
+    
     def return_train_test(self, split_factor=1500, past="all", zeros="cut"):
+        '''
+        Returns single train-test split.
+        
+        INPUT:
+            split_factor - (int/float) if int bigger 1 it will take row number for split
+                           if float smaller 1 it will take percentage proportion for split
+            past - (str) returning all past shifts or only week/month specific
+            zeros - (str) the produced zeros after shifting will be "cut" or filled with "zero"
+        OUTPUT:
+            (train, test) - (DataFrame, DataFrame) splitted train and test datasets
+        '''
         if split_factor < 1:
             train = self.chart_df[:int(split_factor*(len(self.chart_df)))]
             test = self.chart_df[int(split_factor*(len(self.chart_df))):]
@@ -419,7 +632,20 @@ class ShiftChartData(ChartData):
         
         return train, test
     
+    
     def gen_scaled_train_val_test(self, features, split=""):
+          '''
+        Generator for returning multiple shifted splits for SARIMAX Cross Validation.
+        The default arguments are optimized for one split (main model split) to return.
+        
+        INPUT:
+            features - (list of str) List of features to return split for
+            splits - (int) number of total splits
+            
+        OUTPUT:      
+            (train, val, test, split_number) - Generator(DataFrame, DataFrame, DataFrame, int) 
+                                               train, validate and test datasets and number of split
+        '''
         if split:
             split_range = range(0,split)
         else:
@@ -444,8 +670,17 @@ class ShiftChartData(ChartData):
             yield train, val, test, split_number
             
             
-            
     def return_scaled_test(self, pred, true):
+        '''
+        Scales prediction and true input time series.
+        
+        INPUT:
+            pred - (DataFrame) Test Data to make predictions for
+            true - (DataFrame) True Time Series for comparing
+        OUTPUT:
+            (pred, pred_c, true, true_c) - (np.array, Scaler Object, np.array, Scaler Object)
+                                           Scaled Timeseries and Scaler Objects for later scale inversion
+        '''
         pred_c = MinMaxScaler()
         pred = pred_c.fit_transform(pred)
         
@@ -455,9 +690,19 @@ class ShiftChartData(ChartData):
         return pred, pred_c, true, true_c
         
         
-    
-    
     def gen_return_splits(self, splits=3, split_size=300, data_len=1800, past="all"):
+        '''
+        Generator for returning multiple shifted splits for GRU Cross Validation.
+        The default arguments are optimized for 3 splits to return.
+        
+        INPUT:
+            splits - (int) number of total splits
+            split_size - (int) increment for single split
+            data_len - (int) total defined data length for getting complete splits
+            past - (str) returning all past shifts or only week/month specific
+        OUTPUT:      
+            (train, test) - Generator(DataFrame, DataFrame) train and test datasets
+        '''
         start_split = int(np.round((data_len/2)/split_size))
         end_split = start_split + splits
         
@@ -473,6 +718,11 @@ class ShiftChartData(ChartData):
 
             
 class ModelData(ShiftChartData):
+    '''
+    Expanding ShiftChartData by Model and Forecast specific Functions.
+    Generic approach is to use only past data as features/explanatory time series
+    for having a time range to predict into future.
+    '''
     def __init__(self, 
                  fixed_cols="bitcoin_Price", 
                  window_size=30, 
@@ -485,18 +735,20 @@ class ModelData(ShiftChartData):
                                'economy_pos_sents_prev_month'],
                  opt_gru_feat =   [ 'bitcoin_Price_prev_month',
                                      'alibaba_Price_prev_month',
-                                     #'alibaba_Low_prev_month',
                                      'alibaba_High_prev_month',
-                                     #'amazon_Price_prev_month',
-                                     #'amazon_Low_prev_month',
                                      'amazon_High_prev_month',
-                                     #'googl_Price_prev_month',
-                                     #'googl_Low_prev_month',
-                                     #'googl_High_prev_month',
                                      'bitcoin_Google_Trends_prev_month',
                                      'economy_pos_sents_prev_month',
                                      'cryptocurrency_Google_Trends_prev_month',
                                                                              ]):
+        '''
+        Loads the pretrained models, features and will split input data for train and test.
+        
+        INPUT:
+            model_path - (str) Local path where pretrained models are stored
+            opt_ari_feat - (list of str) Explanatory Time Series for SARIMAX Model Prediction
+            opt_gru_feat - (list of str) Feature Time Series for GRU Model Prediction
+        '''
         
         super().__init__(fixed_cols, window_size, chart_col)    
                
@@ -516,11 +768,29 @@ class ModelData(ShiftChartData):
 
         
     def get_forecast_dates(self):
+        '''
+        Returns list of stringified dates for which timespan daily prediction
+        is possible.
+        
+        OUTPUT:
+            forecast_list - (list of str) with all days prediction will be available for
+        '''
         forecast_exp = self.chart_df[(self.chart_df.index <= self.test.index.max()) & (self.chart_df.index > self.train.index.max())].index[30:]
         return list(forecast_exp.strftime("%Y-%m-%d"))
     
+    
     def get_real_price(self, curr_day, shift=-31):
+        '''
+        Returns real price for given time before "curr_day" and future
+        timespan given by "shift".
         
+        INPUT:
+            curr_day - (str "2019-01-01") day from where to return real price
+            shift - (int) number of days to return future price
+        OUTPUT:
+            (curr_real_price, real_price_31) - (DataFrame, DataFrame) holds past until curr_day
+                                               and future real price for shift 
+        '''
         offset = shift*-1
         
         curr_date = datetime.strptime(curr_day, "%Y-%m-%d")
@@ -537,6 +807,16 @@ class ModelData(ShiftChartData):
     
     
     def gru_forecast(self, curr_day, shift=-31):
+        '''
+        Forecast into future using loaded pretrained GRU model. Will scale before
+        and invert scaling after Model prediction.
+        
+        INPUT:
+            curr_day - (str "2019-01-01") day from where to forecast to future
+            shift - (int) number of days to look into future
+        OUTPUT:
+            forecast - (arimax forecast object) forecast holds prediction DataFrame
+        '''
         
         forecast_exp = self.prep_forecast(self.opt_gru_feat, curr_day, shift)
        
@@ -555,7 +835,15 @@ class ModelData(ShiftChartData):
     
     
     def ari_forecast(self, curr_day, shift=-31):
+        '''
+        Forecast into future using loaded pretrained SARIMAX model.
         
+        INPUT:
+            curr_day - (str "2019-01-01") day from where to forecast to future
+            shift - (int) number of days to look into future
+        OUTPUT:
+            forecast - (arimax forecast object) forecast.predicted_mean holds prediction DataFrame
+        '''
         forecast_exp = self.prep_forecast(self.opt_ari_feat, curr_day, shift)
                 
         forecast = self.arimax.get_forecast(steps=len(forecast_exp), exog=forecast_exp)
@@ -564,6 +852,22 @@ class ModelData(ShiftChartData):
     
     
     def prep_forecast(self, features, curr_day, shift):
+        '''
+        Will prepare time series for forecast by adding offset to testdata
+        in dependence of given timeshift. Therefore it's possible to forecast
+            - shift=8 days for weekly shifted columns
+            - shift=15 days for 2weekly shifted columns
+            - shift=31 days for monthly shifted columns
+        Any values bigger than that would give knowledge about the future.
+            
+        INPUT:
+            features - (list of str) prepare dataframe with model specific features
+            curr_day - (str "2019-01-01") day from where to forecast to future
+            shift - (int) number of days to look into future
+        OUTPUT:
+            forecast_exp - (DataFrame) with appended offset to enable future forecast
+        '''
+        
         
         feat_prep = [x.replace("_prev_month","{}") for x in features]
         now_feat = [x.format("") for x in feat_prep]
@@ -584,26 +888,38 @@ class ModelData(ShiftChartData):
          
         
     def cross_validate_arimax(self):
-            result_dict = {}
-            split_index = 0
-            for train, test in self.gen_return_splits():
+        '''
+        Loads pretrained model and returns dict with results for cross validated SARIMAX Model evaluation.
         
-                exog = test[self.opt_ari_feat]
+        OUTPUT:
+            result_dict - (dict) Holds plots and error calculations for each split
+        '''
+        result_dict = {}
+        split_index = 0
+        for train, test in self.gen_return_splits():
+        
+            exog = test[self.opt_ari_feat]
             
-                arimax = pickle.load( open( self.arimax_split_model[split_index], "rb" ) )
-                forecast = arimax.get_forecast(steps=len(test), exog=exog)
+            arimax = pickle.load( open( self.arimax_split_model[split_index], "rb" ) )
+            forecast = arimax.get_forecast(steps=len(test), exog=exog)
         
-                result_dict["S_{}_CORR".format(split_index)] = np.corrcoef(forecast.predicted_mean,test["bitcoin_Price"].values)[0][1]
-                result_dict["S_{}_RMSE".format(split_index)] = sqrt(mean_squared_error(forecast.predicted_mean, test["bitcoin_Price"]))
+            result_dict["S_{}_CORR".format(split_index)] = np.corrcoef(forecast.predicted_mean,test["bitcoin_Price"].values)[0][1]
+            result_dict["S_{}_RMSE".format(split_index)] = sqrt(mean_squared_error(forecast.predicted_mean, test["bitcoin_Price"]))
         
-                result_dict["S_{}_VALID".format(split_index)] = test["bitcoin_Price"]
-                result_dict["S_{}_FORE".format(split_index)] = forecast.predicted_mean
+            result_dict["S_{}_VALID".format(split_index)] = test["bitcoin_Price"]
+            result_dict["S_{}_FORE".format(split_index)] = forecast.predicted_mean
             
-                split_index = split_index + 1
+            split_index = split_index + 1
                 
-            return result_dict
+        return result_dict
         
     def cross_validate_gru(self):
+        '''
+        Loads pretrained model and returns dict with results for cross validated GRU Model evaluation.
+        
+        OUTPUT:
+            result_dict - (dict) Holds plots and error calculations for each split
+        '''
         result_dict = {}
         for train,val,test,split_index in self.gen_scaled_train_val_test(self.opt_gru_feat, split=3):
     
@@ -620,6 +936,17 @@ class ModelData(ShiftChartData):
 ### APPLY FUNCTIONS ###
     
 def convert_values(row, col):
+    '''
+    Function for pandas per-row apply function. Converts value from specified "col" from
+    "5,343.504" to float representation.
+    
+    INPUT:
+        row - (Row of DataFrame) Row with at least one string representation of float value
+        col - (str) Name of column with the string representation of float value
+    
+    OUTPUT:
+        val - (float) Returns float value
+    '''
     try:
         val = row[col].replace(",","")
     except:
@@ -627,7 +954,17 @@ def convert_values(row, col):
     return float(val)
 
 def convert_vol(row, col):
+    '''
+    Function for pandas per-row apply function. Converts value from specified "col" from
+    "10M" or "5K" to float representation.
     
+    INPUT:
+        row - (Row of DataFrame) Row with at least one string representation of float value
+        col - (str) Name of column with the string representation of float value
+    
+    OUTPUT:
+        val - (float) Returns float value
+    '''
     letter = row[col][-1]
     val = row[col].rstrip(letter)
     if val == "":
@@ -644,19 +981,34 @@ def convert_vol(row, col):
 ### OTHER HELPERS ###
 
 def evaluate_model(model, test, timesteps):
+    # Function from https://github.com/ninja3697/Stocks-Price-Prediction-using-Multivariate-Analysis/blob/master/Multivatiate-GRU/Multivariate-3-GRU.ipynb
+    '''
+    Prepare Test Data for Prediction with GRU Model, predict and calculate
+    error values.
+    
+    INPUT:
+        model - (keras GRU model) number of features has to be the same as for training
+        test - (np.array) Input time series to make predictions for
+        timesteps - (int) Timesteps Offset
+    OUTPUT:
+        (mse, rmse, r2, Y_test, Y_hat) - (float, float, float, np.array, np.array)
+                                         error values and prediction/true time series
+    '''
     X_test = []
     Y_test = []
 
-    # Loop for testing data
     for i in range(timesteps,test.shape[0]):
         X_test.append(test[i-timesteps:i])
         Y_test.append(test[i][0])
     X_test,Y_test = np.array(X_test),np.array(Y_test)
 
-    # Prediction Time !!!!
+    # predicted time series
     Y_hat = model.predict(X_test)
+    # mean squared error
     mse = mean_squared_error(Y_test,Y_hat)
+    # root mean squared error
     rmse = sqrt(mse)
+    # R2 score
     r2 = r2_score(Y_test,Y_hat)
-    return mse,rmse, r2, Y_test, Y_hat
+    return mse, rmse, r2, Y_test, Y_hat
     
