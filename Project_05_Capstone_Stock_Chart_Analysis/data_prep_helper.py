@@ -492,6 +492,12 @@ class ShiftChartData(ChartData):
                  'alibaba_Price',
                  'alibaba_High',
                  'alibaba_Low',
+                 'sp500_Price',
+                 'sp500_High',
+                 'sp500_Low',
+                 'dax_Price',
+                 'dax_High',
+                 'dax_Low',
                  'amazon_Price',
                  'amazon_High',
                  'amazon_Low',
@@ -509,14 +515,17 @@ class ShiftChartData(ChartData):
         if past=="now":
             return df[cols]
         elif past=="week":
-            week_cols.extend(["month-1","month-2"])
-            return df[week_cols]
+            return_cols = week_cols
+            return_cols.extend(["month-1","month-2", "bitcoin_Price", "bitcoin_High", "bitcoin_Low"])
+            return df[return_cols]
         elif past=="2weeks":
-            weeks2_cols.extend(["month-1","month-2"])
-            return df[week_cols]
+            return_cols = weeks2_cols
+            return_cols.extend(["month-1","month-2", "bitcoin_Price", "bitcoin_High", "bitcoin_Low"])
+            return df[return_cols]
         elif past=="month":
-            month_cols.extend(["month-1","month-2"])
-            return df[month_cols]
+            return_cols = month_cols
+            return_cols.extend(["month-1","month-2", "bitcoin_Price", "bitcoin_High", "bitcoin_Low"])
+            return df[return_cols]
         elif past=="ari":
             return df[arimax_opt_cols]
         elif past=="all":
@@ -524,7 +533,7 @@ class ShiftChartData(ChartData):
             week_cols.extend(weeks2_cols)
             week_cols.extend(cols)
             all_cols = week_cols
-            all_cols.extend(["month-1","month-2"])
+            all_cols.extend(["month-1","month-2", "bitcoin_Price", "bitcoin_High", "bitcoin_Low"])
             return df[all_cols]
         
         else:
@@ -574,6 +583,12 @@ class ShiftChartData(ChartData):
                        "alibaba_Price",
                        "alibaba_High",
                        "alibaba_Low",
+                       "sp500_Price",
+                       "sp500_High",
+                       "sp500_Low",
+                       "dax_Price",
+                       "dax_High",
+                       "dax_Low",
                        "amazon_Price",
                        "amazon_High",
                        "amazon_Low",
@@ -589,6 +604,8 @@ class ShiftChartData(ChartData):
                     df[col+"_prev_week"] = df[col].shift(8)
                 elif past=="month":
                     df[col+"_prev_month"] = df[col].shift(31)
+                elif past=="2weeks":
+                    df[col+"_prev_2weeks"] = df[col].shift(15)
                 else:
                     df[col+"_prev_week"] = df[col].shift(8)
                     df[col+"_prev_month"] = df[col].shift(31)
@@ -599,6 +616,8 @@ class ShiftChartData(ChartData):
             df = df.iloc[8:,:]
         elif zeros=="cut" and past=="month":
             df = df.iloc[31:,:]
+        elif zeros=="cut" and past=="2weeks":
+            df = df.iloc[15:,:]
         elif zeros=="zero":
             df.fillna(0, inplace=True)
         else:
@@ -634,7 +653,7 @@ class ShiftChartData(ChartData):
     
     
     def gen_scaled_train_val_test(self, features, split=""):
-          '''
+        '''
         Generator for returning multiple shifted splits for SARIMAX Cross Validation.
         The default arguments are optimized for one split (main model split) to return.
         

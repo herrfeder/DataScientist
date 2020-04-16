@@ -294,9 +294,7 @@ def return_granger_plot(df_path, title="", height=1000, colormap="viridis",dash=
 def return_cross_val_plot(split_dict, title="", height=1200, dash=False):
     
     params = ["CORR", "MSE", "RMSE", "R2"]
-    
-   
-        
+      
     valid_list = []
     forecast_list = []
     title_list = []
