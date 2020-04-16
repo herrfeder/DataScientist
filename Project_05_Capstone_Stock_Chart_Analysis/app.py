@@ -80,11 +80,9 @@ acc_slider_list = [["Introduction", "Resources"],
 
 ### Prepared Visualisations for speeding up web app ###
 
-# Load static dataset for Granger Causality plot as live build would take to long
 GRANGER_PATH = APP_PATH.joinpath("data/granger_causality.csv")
 GRANGER_PLOT = ph.return_granger_plot(GRANGER_PATH, title="", colormap="viridis_r", dash=True)
 
-# static visualisation for viewing all input data sets
 VIEW_DATA_FIG = ph.exploratory_plot(do_big.apply_boll_bands("bitcoin_hist",
                                                               append_chart=False), title="", dash=True)
 
@@ -104,6 +102,9 @@ CROSS_VAL_ARIMAX = ph.return_cross_val_plot(do_big.cross_validate_arimax(),
 CROSS_VAL_GRU = ph.return_cross_val_plot(do_big.cross_validate_gru(),
                                          title="",
                                          dash=True)
+
+
+### Assistance Functions for creating HTML content ###
 
 def make_items(acc_str_list, acc_slider_list):
     '''
@@ -203,10 +204,10 @@ def build_growth_content(growth_dict, cols):
     return dbc.Row(children=[left_col, right_col])
                     
                     
-
-
+### BASIC WEB APP LAYOUT ###
 
 # NAVBAR
+
 NAVBAR = dbc.Navbar(
     children=[
        
@@ -244,7 +245,7 @@ NAVBAR = dbc.Navbar(
 )
 
 
-### BASIC WEB APP LAYOUT ###
+# Basic Web App Skeleton
 
 LEFT_COLUMN = dbc.Jumbotron(
     [
@@ -258,18 +259,36 @@ LEFT_COLUMN = dbc.Jumbotron(
     ]
 )
 
-
 RIGHT_COLUMN = html.Div(id="right_column", children=[dcc.Loading(id="right_column_loading")])
 
 
-### A INTRODUCTION ###
+BODY = dbc.Container([
+            dbc.Row(
+                [
+                    dbc.Col(LEFT_COLUMN, md=3),
+                    dbc.Col(RIGHT_COLUMN, md=9),
+                ],
+                style={"marginTop": 30},
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(dbc.Card(""), width=8),
+                    dbc.Col(dbc.Card(""), width=4),
+                    
+                ]
+            )], fluid=True)
+
+
+### MENU BASED CONTENT ###
+
+# A INTRODUCTION
 
 INTRODUCTION = html.Div(dcc.Markdown(conclusion_texts.introduction), id="introduction")
 
 RESOURCES = html.Div(dcc.Markdown(conclusion_texts.resources), id="resources")
 
 
-### B VIEW DATA ###
+# B VIEW DATA
 
 EXP_CHART_PLOT = [dbc.CardHeader(html.H5("Historic Input Datasets")),
               dbc.CardBody(dcc.Loading(dcc.Graph(id="exp_chart_plot",
@@ -279,7 +298,7 @@ EXP_CHART_PLOT = [dbc.CardHeader(html.H5("Historic Input Datasets")),
 VIEW_CONCLUSIONS = html.Div(dcc.Markdown(conclusion_texts.view_data_conclusion), id="resources")
 
 
-### C CORRELATION ANALYSIS ###
+# C CORRELATION ANALYSIS
 
 CORR_SHIFT_DROPDOWN = html.Div([
                         dcc.Dropdown(id='corr_shift_dropdown',
@@ -342,7 +361,7 @@ CORR_02_CHART_PLOT = [dbc.CardHeader(html.H5("Correlation Matrix with User-Defin
 CORR_CONCLUSIONS = html.Div(dcc.Markdown(conclusion_texts.correlation_conclusion), id="corr-conclusions")
 
 
-### D CAUSALITY ANALYSIS ###
+# D CAUSALITY ANALYSIS
 
 CAUS_SEASONAL_DROPDOWN = html.Div([
                         dcc.Dropdown(id='caus_seasonal_dropdown',
@@ -386,7 +405,10 @@ CAUS_GRANGER_PLOT = [dbc.CardHeader(html.H5("Granger Causality with Time Lag of 
                                          ))]
 
 
-### E MODEL EVALUATION ###
+CAUS_CONCLUSIONS = ""
+
+
+# E MODEL EVALUATION
 
 MODEL_SARIMAX_EVAL = [dbc.CardHeader(html.H5("Model SARIMAX Cross Validation")),
                      dbc.CardBody(
@@ -408,7 +430,7 @@ MODEL_GRU_EVAL = [dbc.CardHeader(html.H5("Model GRU Cross Validation")),
 
 
 
-### F FORECAST ###
+# F FORECAST
 
 FORE_DAYS_PICKER =  html.Div([   
     dcc.DatePickerSingle(
@@ -492,25 +514,12 @@ FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
              ]
 
 
-BODY = dbc.Container([
-            dbc.Row(
-                [
-                    dbc.Col(LEFT_COLUMN, md=3),
-                    dbc.Col(RIGHT_COLUMN, md=9),
-                ],
-                style={"marginTop": 30},
-            ),
-            dbc.Row(
-                [
-                    dbc.Col(dbc.Card(""), width=8),
-                    dbc.Col(dbc.Card(""), width=4),
-                    
-                ]
-            )], fluid=True)
+FINAL_CONCLUSIONS = ""
 
 
 
 ### WEBAPP INIT ###
+
 app = dash.Dash(__name__, 
                 external_stylesheets=[dbc.themes.SOLAR], 
                 url_base_pathname="/bitcoinprediction/",
@@ -529,6 +538,7 @@ server = app.server
 
 ### CALLBACKS ###
 
+# Menu control function
 acc_input = [Input(f"group-{i}-toggle", "n_clicks") for i in acc_str_list]
 acc_input.extend([Input(f"slider-{i}", "value") for i in acc_str_list])
 @app.callback(
@@ -539,6 +549,10 @@ acc_input.extend([Input(f"slider-{i}", "value") for i in acc_str_list])
 def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
               sli_01, sli_02, sli_03, sli_04, sli_05, sli_06,
               figure):
+    '''
+    This function returns the HTML content into the right column of web app based
+    on the clicked accordion button and clicked submenu slider value
+    '''
     ctx = dash.callback_context
 
     if not ctx.triggered:
@@ -550,12 +564,12 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
         if sli_01 == 1:
             return INTRODUCTION
         if sli_01 == 0:
-            return "" # needs to be filled with RESOURCES
+            return RESOURCES
     elif (acc_str_list[1] in element_id):
         if sli_02 == 1:
             return EXP_CHART_PLOT
         if sli_02 == 0:
-            return "" # needs to be filled with VIEW_CONCLUSIONS
+            return VIEW_CONCLUSIONS
     elif (acc_str_list[2] in element_id):
         if sli_03 == 2:
             return CORR_01_CHART_PLOT
@@ -569,7 +583,7 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
         if sli_04 == 1:
             return CAUS_GRANGER_PLOT
         if sli_04 == 0:
-            return ""
+            return CAUS_CONCLUSIONS
         
     elif (acc_str_list[4] in element_id):
         if sli_05 == 1:
@@ -584,97 +598,8 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
         if sli_06 == 0:
             return ""
 
-
-@app.callback(
-    Output("fore_plot", "figure"),
-    [Input("fore_days_picker", "date"),
-     Input("boll_check", "value"),
-     Input("arimax_check", "value"),
-     Input("gru_check", "value")], 
-    [State("fore_plot", "figure")])
-def plot_forecast(curr_day, boll_check, arimax_check, gru_check, figure):
-    
-    real_price, real_price_30 = do_big.get_real_price(curr_day, shift=-31)
-    
-    fig=""
-    
-    if arimax_check:
-        ari_fore = do_big.ari_forecast(curr_day , shift=-31)
-        fig = ph.get_ari_plot(df=ari_fore, fig=fig, conf_int=False)
         
-    if gru_check:
-        gru_fore = do_big.gru_forecast(curr_day, shift=-31)
-        fig = ph.get_gru_plot(df=gru_fore, fig=fig)
-    
-    
-    if boll_check:
-        boll_bool = True
-    else:
-        boll_bool = False
-        
-    
-    return ph.price_plot(real_price, 
-                         real_30=real_price_30, 
-                         fig=fig, 
-                         boll=boll_bool, 
-                         dash=True)
-
-    
-@app.callback(
-    [Output("card_sents", "children"),
-     Output("card_trends", "children"),
-     Output("card_stocks", "children")],
-    [Input("fore_days_picker", "date"),
-     Input("fore_past_slider", "value")], 
-    [State("fore_plot", "figure")])
-def fill_fore_blocks(curr_day, past ,figure):   
-    
-    sentiments = ["economy_pos_sents", 
-                  "bitcoin_pos_sents"] 
-     
-    trends = ["bitcoin_Google_Trends", 
-              "cryptocurrency_Google_Trends"] 
-     
-    stocks = ["bitcoin_Price",
-              "sp500_Price", 
-              "alibaba_Price", 
-              "amazon_Price"]
-    
-    all_indicators = []
-    all_indicators.extend(sentiments)
-    all_indicators.extend(trends)
-    all_indicators.extend(stocks)
-
-    
-    past = past*-1
-    growth_dict = do_big.get_growth(curr_day, past, all_indicators)
-    
-    card_sents = build_growth_content(growth_dict, sentiments)
-    card_trends = build_growth_content(growth_dict, trends)
-    card_stocks = build_growth_content(growth_dict, stocks)
-    
-    return card_sents, card_trends, card_stocks
-
-@app.callback(
-    Output("caus_seasonal_plot", "figure"),
-    [Input("caus_seasonal_dropdown", "value")],
-    [State("caus_seasonal_plot", "figure")]
-)
-def ret_caus_seasonal_plot(dropdown, figure):
-    
-    return ph.return_season_plot(do_big.chart_df[small_col_set], dropdown, title="", dash=True)
-    
-    
-@app.callback(
-    Output("corr_shift_matrix_plot", "figure"),
-    [Input("corr_shift_button", "n_clicks")],
-    [State("corr_shift_dropdown", "value"), State("corr_shift_slider", "value")]
-)
-def ret_corr_shift_plot(n, dropdown, slider):
-    
-    return ph.return_shift_corr(do_big, dropdown, slider, output="single",dash=True, cols=small_col_set)
-    
-    
+# Control Accordion animation
 @app.callback(
     [Output(f"collapse-{i}", "is_open") for i in acc_str_list],
     [Input(f"group-{i}-toggle", "n_clicks") for i in acc_str_list],
@@ -682,6 +607,9 @@ def ret_corr_shift_plot(n, dropdown, slider):
 )
 def toggle_accordion(n1, n2, n3, n4, n5, n6,
                      is_open1, is_open2, is_open3, is_open4, is_open5, is_open6):
+    '''
+    This function collapses the single Accordion Buttons based on click events
+    '''
     ctx = dash.callback_context
 
     if not ctx.triggered:
@@ -706,12 +634,16 @@ def toggle_accordion(n1, n2, n3, n4, n5, n6,
 
 
 
+# List for Output of Slider Subtitle HTML elements
 output=[]
 output.extend([Output(f"slidersub-{i}", "children") for i in acc_str_list])
 
+# List for State of Slider Subtitle HTML elements
 state=[]
 state.extend([State(f"slidersub-{i}", "children") for i in acc_str_list])
 
+
+# Control Subtitle Output below submenu slider
 @app.callback(
     output,
     acc_input,
@@ -720,7 +652,10 @@ state.extend([State(f"slidersub-{i}", "children") for i in acc_str_list])
 def update_sub(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
               sli_01, sli_02, sli_03, sli_04, sli_05, sli_06,
               slisub_01, slisub_02, slisub_03, slisub_04, slisub_05, slisub_06):
-
+    '''
+    Based on click events on accordion buttons and submenu sliders the subtitle
+    texts below each submenu slider will be updated
+    '''
     ctx = dash.callback_context
 
     if not ctx.triggered:
@@ -767,7 +702,7 @@ def update_sub(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
             return "", "", "", "", "", "See Conclusions and Outlook"
 
     
-    
+# controls green color of menu dot    
 @app.callback(
     [Output(f"spandot-{i}", "style") for i in acc_str_list],
     [Input(f"group-{i}-toggle", "n_clicks") for i in acc_str_list],
@@ -775,6 +710,10 @@ def update_sub(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
 )
 def toggle_active_dot(n1, n2, n3, n4, n5, n6, 
                       active1, active2, active3, active4, active5, active6):
+    '''
+    Based on click events on the accordion button the style of the spandot in each accordion button
+    will be updated
+    '''
     
     sty_na={"height": "15px", 
            "width": "15px", 
@@ -810,6 +749,114 @@ def toggle_active_dot(n1, n2, n3, n4, n5, n6,
     
     return sty_na, sty_na, sty_na, sty_na, sty_na, sty_na 
            
+
+# belongs to F, outputs forecast
+@app.callback(
+    Output("fore_plot", "figure"),
+    [Input("fore_days_picker", "date"),
+     Input("boll_check", "value"),
+     Input("arimax_check", "value"),
+     Input("gru_check", "value")], 
+    [State("fore_plot", "figure")])
+def plot_forecast(curr_day, boll_check, arimax_check, gru_check, figure):
+    '''
+    Will return forecast plot and will be updated based on 
+    date picker and several checkboxes
+    '''
+    
+    real_price, real_price_30 = do_big.get_real_price(curr_day, shift=-31)
+    
+    fig=""
+    
+    if arimax_check:
+        ari_fore = do_big.ari_forecast(curr_day , shift=-31)
+        fig = ph.get_ari_plot(df=ari_fore, fig=fig, conf_int=False)
+        
+    if gru_check:
+        gru_fore = do_big.gru_forecast(curr_day, shift=-31)
+        fig = ph.get_gru_plot(df=gru_fore, fig=fig)
+    
+    
+    if boll_check:
+        boll_bool = True
+    else:
+        boll_bool = False
+        
+    return ph.price_plot(real_price, 
+                         real_30=real_price_30, 
+                         fig=fig, 
+                         boll=boll_bool, 
+                         dash=True)
+
+    
+# belongs to F, controls growth indexes in forecast plot
+@app.callback(
+    [Output("card_sents", "children"),
+     Output("card_trends", "children"),
+     Output("card_stocks", "children")],
+    [Input("fore_days_picker", "date"),
+     Input("fore_past_slider", "value")], 
+    [State("fore_plot", "figure")])
+def fill_fore_blocks(curr_day, past ,figure):   
+    '''
+    Returns content for growth indicators below forecast plot, will be updated by
+    date picker and slider for adjusting lookback to past
+    '''
+    
+    sentiments = ["economy_pos_sents", 
+                  "bitcoin_pos_sents"] 
+     
+    trends = ["bitcoin_Google_Trends", 
+              "cryptocurrency_Google_Trends"] 
+     
+    stocks = ["bitcoin_Price",
+              "sp500_Price", 
+              "alibaba_Price", 
+              "amazon_Price"]
+    
+    all_indicators = []
+    all_indicators.extend(sentiments)
+    all_indicators.extend(trends)
+    all_indicators.extend(stocks)
+    
+    past = past*-1
+    growth_dict = do_big.get_growth(curr_day, past, all_indicators)
+    
+    card_sents = build_growth_content(growth_dict, sentiments)
+    card_trends = build_growth_content(growth_dict, trends)
+    card_stocks = build_growth_content(growth_dict, stocks)
+    
+    return card_sents, card_trends, card_stocks
+
+
+# belongs to D, plots seasonal decomposition plot
+@app.callback(
+    Output("caus_seasonal_plot", "figure"),
+    [Input("caus_seasonal_dropdown", "value")],
+    [State("caus_seasonal_plot", "figure")]
+)
+def ret_caus_seasonal_plot(dropdown, figure):
+    '''
+    Returns Seasonal decomposition plot and will be updated
+    by triggering dropdown choosing a single time series
+    '''
+    return ph.return_season_plot(do_big.chart_df[small_col_set], dropdown, title="", dash=True)
+    
+
+# belongs to C, plot manual shifted correlation plot
+@app.callback(
+    Output("corr_shift_matrix_plot", "figure"),
+    [Input("corr_shift_button", "n_clicks")],
+    [State("corr_shift_dropdown", "value"), State("corr_shift_slider", "value")]
+)
+def ret_corr_shift_plot(n, dropdown, slider):
+    '''
+    Returns correlation heatmap with shifted timeseries and will be updated by 
+    triggering dropdown to choose fixed timeseries and slider to choose shift of other timeseries
+    '''
+    return ph.return_shift_corr(do_big, dropdown, slider, output="single",dash=True, cols=small_col_set)
+    
+    
 
     
 if __name__ == "__main__":
