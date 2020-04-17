@@ -7,6 +7,16 @@ import numpy as np
 
 
 def apply_layout(fig, title="", height=1250):
+    '''
+    Applying web app layout for plots.
+    
+    INPUT:
+        title - (str) Figure Title
+        height - (int) Figure Height 
+    OUTPUT:
+        fig - (plotly Figure) plot object that needs to be passed to dash figure attribute
+    '''
+    
     
     fig.update_layout(height=height, title_text=title)
     layout = fig["layout"]
@@ -27,7 +37,19 @@ def apply_layout(fig, title="", height=1250):
 
 
 
-def get_gru_plot(df, fig="", title="", offset=31, dash=False):
+def get_gru_plot(df, fig="", title="", dash=False):
+    '''
+    Get Plot for GRU prediction Chart.
+    
+    INPUT:
+        df - (DataFrame) with Datetime index and single Timeseries column
+        fig - (plotly Figure) On passing a fig the plot will be added to an existing plot in this argument
+        title - (str) Figure Title
+        dash - (bool) On True, will return Figure with Web App specific layout
+               On False, will return plain figure
+    OUTPUT:
+        fig - (plotly Figure) plot object that needs to be passed to dash figure attribute
+    '''
     
     if not fig:
         fig = make_subplots(
@@ -35,9 +57,7 @@ def get_gru_plot(df, fig="", title="", offset=31, dash=False):
                         cols=1, 
                         shared_xaxes=True)
         
-    
-    df_mean = df.rolling(window=10,min_periods=1).mean()
-    
+        
     fig.add_trace(go.Scatter(x=df.index, 
                              y=df[0],
                              line=dict(color='blue'),
@@ -50,7 +70,25 @@ def get_gru_plot(df, fig="", title="", offset=31, dash=False):
     
 
 
-def get_ari_plot(df, fig="", title="", offset=31,conf_int=False, dash=False):
+def get_ari_plot(df, fig="", title="", offset=31, conf_int=False, dash=False):
+    '''
+    Get Plot for SARIMAX prediction Chart with optional Confidence Intervals.
+    The offset is needed to align the prediction with the true plot.
+    
+    INPUT:
+        df - (statsmodels SARIMAX object) in df.predicted_mean lies Datetime index and single Timeseries column
+             in df.conf_int() are the confidence intervals for prediction
+        fig - (plotly Figure) On passing a fig the plot will be added to an existing plot in this argument
+        title - (str) Figure Title
+        offset - (int) due to some shift during forecast we have to shift the prediction for beeing aligned
+                 with the true plot
+        conf_int - (bool) on True, adding Confidence Intervals for prediction to plot
+                   on False, not
+        dash - (bool) On True, will return Figure with Web App specific layout
+               On False, will return plain figure
+    OUTPUT:
+        fig - (plotly Figure) plot object that needs to be passed to dash figure attribute
+    '''
     
     if not fig:
         fig = make_subplots(
@@ -58,9 +96,7 @@ def get_ari_plot(df, fig="", title="", offset=31,conf_int=False, dash=False):
                         cols=1, 
                         shared_xaxes=True)
         
-    
-    df_mean = df.predicted_mean.rolling(window=10,min_periods=1).mean()
-    
+        
     fig.add_trace(go.Scatter(x=df.predicted_mean.index + DateOffset(offset), 
                              y=df_mean,
                              line=dict(color='green'),
@@ -94,6 +130,24 @@ def price_plot(df, real_30=pd.DataFrame(),fig="", title="", boll=True, dash=Fals
                                            "BTC 30 Day Moving Average",
                                            "BTC Upper Bollinger Band",
                                            "BTC Lower Bollinger Band"]):
+    '''
+    Plotting the real price, optionally the offset into future for comparison to prediction, 
+    optionally the Bollinger Bands.
+    
+    INPUT:
+        df - (DataFrame) with Datetime index and single Timeseries column
+        real_30 - (DataFrame) with Datetime index and single Timeseries column
+        fig - (plotly Figure) On passing a fig the plot will be added to an existing plot in this argument
+        title - (str) Figure Title
+        boll - (bool) On True, plot Bollinger Bands
+               On False, Not
+        dash - (bool) On True, will return Figure with Web App specific layout
+               On False, will return plain figure
+        names - (list of str) Legend names for plots
+    OUTPUT:
+        fig - (plotly Figure) plot object that needs to be passed to dash figure attribute
+
+    '''
     if not fig:
         fig = make_subplots(
                         rows=1, 
@@ -136,7 +190,21 @@ def price_plot(df, real_30=pd.DataFrame(),fig="", title="", boll=True, dash=Fals
 
 
 def exploratory_plot(df, title="",dash=False):
+    '''
+    Plotting the charts for all input time series. The used columns for plotting
+    are hardcoded and could be updated to a more generic way.
+    
+    INPUT:
+        df - (DataFrame) with Datetime index and multiple Timeseries columns
+        title - (str) Figure Title
+        dash - (bool) On True, will return Figure with Web App specific layout
+               On False, will return plain figure
+    OUTPUT:
+        fig - (plotly Figure) plot object that needs to be passed to dash figure attribute
 
+    '''
+    
+    
     fig = make_subplots(
                         rows=4, 
                         cols=1, 
@@ -202,6 +270,19 @@ def exploratory_plot(df, title="",dash=False):
 
         
 def return_season_plot(df, column, title="", dash=False):
+    '''
+    Plotting the charts for all input time series. The used columns for plotting
+    are hardcoded and could be updated to a more generic way.
+    
+    INPUT:
+        df - (DataFrame) with Datetime index and multiple Timeseries columns
+        column - (str) column in input df to apply seasonal decomposition for
+        title - (str) Figure Title
+        dash - (bool) On True, will return Figure with Web App specific layout
+               On False, will return plain figure
+    OUTPUT:
+        fig - (plotly Figure) returns object that needs to be passed to dash figure attribute
+    '''
     
     series = pd.DataFrame(data=df[column].values, 
                           index=df.index, 
@@ -240,6 +321,20 @@ def return_season_plot(df, column, title="", dash=False):
         
 
 def plot_val_heatmap(df, title="", height=1000, colormap="viridis", colorbar="Corr Coefficient",dash=False):
+    '''
+    Plots an Plotly based heatmap, based on the input of a DataFrame with Correlation Matrix content.
+    
+    INPUT:
+        df - (DataFrame) that consists of Correlation Matrix
+        title - (str) Figure Title
+        height - (int) Figure Height
+        colormap - (str) Colormap to use for heatmap
+        colorbar - (str) Label for the colorbar
+        dash - (bool) On True, will return Figure with Web App specific layout
+               On False, will return plain figure
+    OUTPUT:
+        figure - (plotly Figure) returns object that needs to be passed to dash figure attribute
+    '''
     
     coordinates = df.values.tolist()
     columns = list(df.columns)
@@ -266,7 +361,20 @@ def plot_val_heatmap(df, title="", height=1000, colormap="viridis", colorbar="Co
         
         
 def return_shift_corr(do, fixed="bitcoin_Price", shift=-30, output="multi",dash=False, cols=""):
+    '''
     
+    INPUT:
+        do - (ShiftChartData Object) Object of class to run function here
+        fixed - (str) Column to fix on shifting for correlation
+        shift - (int) Number of days to shift the unfixed columns for
+        output - (str) on "multi" complete Correlation Heatmap will be returned
+                 on "single" only row for fixed Column will be returned
+        dash - (bool) On True, will return Figure with Web App specific layout
+               On False, will return plain figure
+        cols - (list of str) do Correlation Matrix for specific subset of columns
+    OUTPUT:
+        figure - (plotly Figure) will run the Shifted Correlation through another function for applying to heatmap
+    '''
     
     do.fixed_cols = fixed
     shift_df = do.single_shift(shift, cols)
@@ -280,6 +388,24 @@ def return_shift_corr(do, fixed="bitcoin_Price", shift=-30, output="multi",dash=
     
 
 def return_granger_plot(df_path, title="", height=1000, colormap="viridis",dash=False):
+    '''
+    PreparesGranger Causality from static file (because of long algorithm runtime) for Heatmap Plot. 
+    Will adjust input DataFrame for better visibility,
+    as everything that is far above 0.06 will be NaN for having more detailed colorscale
+    in the interesting range.
+    
+    
+    INPUT:
+        df_path - (str) relative path to granger plot csv
+        title - (str) Figure Title
+        height - (int) Figure Height
+        colormap - (str) Colormap to use for heatmap
+        dash - (bool) On True, will return Figure with Web App specific layout
+               On False, will return plain figure
+    OUTPUT:
+        figure - (plotly Figure) will run the Granger data through another function for applying to heatmap
+    '''
+    
     
     granger_df = pd.read_csv(df_path)
     granger_df.set_index("Unnamed: 0", inplace=True)
@@ -294,7 +420,9 @@ def return_granger_plot(df_path, title="", height=1000, colormap="viridis",dash=
 def return_cross_val_plot(split_dict, title="", height=1200, dash=False):
     
     params = ["CORR", "MSE", "RMSE", "R2"]
-      
+    
+   
+        
     valid_list = []
     forecast_list = []
     title_list = []
