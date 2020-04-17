@@ -480,24 +480,33 @@ FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                                             html.Label("Charts:",
                                                 style={"padding-left":20,
                                                        "padding": 10}),
-
-                                            dcc.Checklist(
-                                                    id="boll_check",
-                                                    options=[
-                                                        {'label': 'Bollinger Bands', 
-                                                         'value': 'boll'},], value=["boll"]),
-                                            dcc.Checklist(
-                                                    id="arimax_check",
-                                                    options=[
-                                                        {'label': 'Arimax Prediction', 
-                                                         'value': 'ari'},], value=["ari"]),
-                                            dcc.Checklist(
+                                            dbc.Col([
+                                                dcc.Checklist(
+                                                        id="boll_check",
+                                                        options=[
+                                                            {'label': 'Bollinger Bands', 
+                                                             'value': 'boll'},], value=["boll"]),
+                                            ]),
+                                            dbc.Col([
+                                                dcc.Checklist(
+                                                        id="sarimax_check",
+                                                        options=[
+                                                            {'label': 'Sarimax Prediction', 
+                                                             'value': 'ari'},], value=["ari"]),
+                                                dcc.Checklist(
+                                                        id="sarimax_ma",
+                                                        options=[
+                                                            {'label': 'Sarimax Moving Average', 
+                                                             'value': 'ma'},], value=["ma"]),
+                                            ]),
+                                            dbc.Col([
+                                                dcc.Checklist(
                                                     id="gru_check",
                                                     options=[
                                                         {'label': 'GRU Prediction', 
                                                          'value': 'gru'},], value=["gru"]),
-                                            
-                                            FORE_PAST_SLIDER
+                                            ]),
+                                            FORE_PAST_SLIDER,
                                             ],
                                             align="center",
                                             style={"background-color": "#073642", "border-radius": "0.3rem"}),
@@ -755,14 +764,25 @@ def toggle_active_dot(n1, n2, n3, n4, n5, n6,
     Output("fore_plot", "figure"),
     [Input("fore_days_picker", "date"),
      Input("boll_check", "value"),
-     Input("arimax_check", "value"),
+     Input("sarimax_check", "value"),
+     Input("sarimax_ma", "value"),
      Input("gru_check", "value")], 
     [State("fore_plot", "figure")])
-def plot_forecast(curr_day, boll_check, arimax_check, gru_check, figure):
+def plot_forecast(curr_day, boll_check, arimax_check, sarimax_ma, gru_check, figure):
     '''
     Will return forecast plot and will be updated based on 
     date picker and several checkboxes
     '''
+    if sarimax_ma:
+        sarimax_ma_bool = True
+    else:
+        sarimax_ma_bool = False
+          
+    if boll_check:
+        boll_bool = True
+    else:
+        boll_bool = False
+        
     
     real_price, real_price_30 = do_big.get_real_price(curr_day, shift=-31)
     
@@ -770,18 +790,14 @@ def plot_forecast(curr_day, boll_check, arimax_check, gru_check, figure):
     
     if arimax_check:
         ari_fore = do_big.ari_forecast(curr_day , shift=-31)
-        fig = ph.get_ari_plot(df=ari_fore, fig=fig, conf_int=False)
+        
+        fig = ph.get_ari_plot(df=ari_fore, fig=fig, conf_int=False, mean_averaged=sarimax_ma_bool)
         
     if gru_check:
         gru_fore = do_big.gru_forecast(curr_day, shift=-31)
         fig = ph.get_gru_plot(df=gru_fore, fig=fig)
     
-    
-    if boll_check:
-        boll_bool = True
-    else:
-        boll_bool = False
-        
+
     return ph.price_plot(real_price, 
                          real_30=real_price_30, 
                          fig=fig, 

@@ -70,7 +70,7 @@ def get_gru_plot(df, fig="", title="", dash=False):
     
 
 
-def get_ari_plot(df, fig="", title="", offset=31, conf_int=False, dash=False):
+def get_ari_plot(df, fig="", title="", offset=31, conf_int=False, mean_averaged=True, dash=False):
     '''
     Get Plot for SARIMAX prediction Chart with optional Confidence Intervals.
     The offset is needed to align the prediction with the true plot.
@@ -96,6 +96,10 @@ def get_ari_plot(df, fig="", title="", offset=31, conf_int=False, dash=False):
                         cols=1, 
                         shared_xaxes=True)
         
+    if mean_averaged:
+        df_mean = df.predicted_mean.rolling(10, min_periods=1).mean()
+    else:
+        df_mean = df.predicted_mean
         
     fig.add_trace(go.Scatter(x=df.predicted_mean.index + DateOffset(offset), 
                              y=df_mean,
@@ -156,6 +160,7 @@ def price_plot(df, real_30=pd.DataFrame(),fig="", title="", boll=True, dash=Fals
      
     fig.add_trace(go.Scatter(x=df.index, 
                              y=df['bitcoin_Price'],
+                             line=dict(color='red'),
                              name=names[0]), row=1, col=1)
     
     if not real_30.empty:

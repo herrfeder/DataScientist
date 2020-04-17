@@ -11,6 +11,8 @@ from keras.models import load_model
 from pandas.tseries.offsets import DateOffset
 from datetime import datetime
 
+from IPython.core import debugger
+debug = debugger.Pdb().set_trace
 
 
 class ChartData():
@@ -512,29 +514,27 @@ class ShiftChartData(ChartData):
         weeks2_cols = ["{}_prev_2weeks".format(col) for col in cols]
         month_cols = ["{}_prev_month".format(col) for col in cols]
         
+        return_cols = ["month-1", "month-2"]
+        return_cols.extend(cols)
+        
         if past=="now":
             return df[cols]
         elif past=="week":
-            return_cols = week_cols
-            return_cols.extend(["month-1","month-2", "bitcoin_Price", "bitcoin_High", "bitcoin_Low"])
-            return df[return_cols]
+            week_cols.extend(return_cols)
+            return df[week_cols]
         elif past=="2weeks":
-            return_cols = weeks2_cols
-            return_cols.extend(["month-1","month-2", "bitcoin_Price", "bitcoin_High", "bitcoin_Low"])
-            return df[return_cols]
+            weeks2_cols.extend(return_cols)
+            return df[week2_cols]
         elif past=="month":
-            return_cols = month_cols
-            return_cols.extend(["month-1","month-2", "bitcoin_Price", "bitcoin_High", "bitcoin_Low"])
-            return df[return_cols]
+            month_cols.extend(return_cols)
+            return df[month_cols]
         elif past=="ari":
             return df[arimax_opt_cols]
         elif past=="all":
-            week_cols.extend(month_cols)
-            week_cols.extend(weeks2_cols)
-            week_cols.extend(cols)
-            all_cols = week_cols
-            all_cols.extend(["month-1","month-2", "bitcoin_Price", "bitcoin_High", "bitcoin_Low"])
-            return df[all_cols]
+            return_cols.extend(week_cols)
+            return_cols.extend(weeks2_cols)
+            return_cols.extend(month_cols)
+            return df[return_cols]
         
         else:
             return df[opt_cols]
@@ -609,6 +609,7 @@ class ShiftChartData(ChartData):
                 else:
                     df[col+"_prev_week"] = df[col].shift(8)
                     df[col+"_prev_month"] = df[col].shift(31)
+                    df[col+"_prev_2weeks"] = df[col].shift(15)
         except:
             pass
         
