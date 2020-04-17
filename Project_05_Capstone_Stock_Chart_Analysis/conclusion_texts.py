@@ -11,10 +11,6 @@ resources = """
   * Good Overview about ARIMA Models: https://www.machinelearningplus.com/time-series/arima-model-time-series-forecasting-python/
   * How to prepare Explanatory Variables for Multivariate SARIMAX Model: https://www.kaggle.com/viridisquotient/arimax
   * How to prepare Time Series data for Multivariate SARIMAX Model: https://www.machinelearningplus.com/time-series/time-series-analysis-python/
-  
-## GRU Resources
-
-  * Used functions and ideas for own modelling: https://github.com/ninja3697/Stocks-Price-Prediction-using-Multivariate-Analysis/blob/master/Multivatiate-GRU/Multivariate-3-GRU.ipynb
 
 """
 
@@ -43,30 +39,41 @@ granger_prob_expl = """
 """
 
 introduction = """
-# Initial Data Preprocessing and Correlative Analysis
+# Capstone Project: Multivariate Timeseries Analysis and Prediction (Stock Market)
+## Purpose
 
-This notebook will 
+Building an Time Series Forecast Application to predict and forecast __Bitcoin financial data__
+using supervised and unsupervised Machine Learning Approaches, this includes:
+  * search, collection and of supportive Features in form of suitable Time Series (social media, other similar charts)
+  * preparation, analysis, merging of Data and Feature Engineering using:
+    * Correlative Analysis
+    * Stationarity Analysis
+    * Causality Analysis
+  * Model Preprocessing and Model Fitting with this Machine Learning Algorithms:
+    * supervised SARIMAX (Seasonal AutoRegressive Integrated Moving Average with eXogenous regressors model)
+    * unsupervised GRU (Gated Recurrent Unit)
+  * building an Web Application using a Dash Webapp (see folder __webapp__)
+    * explains my roadmap of analysis and conclusions
+    * provides feature of daily forecasting using designed models
+    * Own Webapp Repository: https://github.com/herrfeder/Udacity-Data-Scientist-Capstone-Multivariate-Timeseries-Prediction-Webapp
+  
 
-## Take Data
-  * read the crypto chart data and stock chart data from [Investing.com](https://www.investing.com/) for last five years
-  * read the collected Google Trend values for last five years 
-  * read the collected daily twitter sentiments for search terms "bitcoin" and "#economy"
+## Approach/Idea
 
-## Preprocess Data
-  * convert string representations of numbers to float
-  * convert human readable presentations of numbers to float
-  * apply daily datetime as index for all imported dataframes
-  
-## Financial Analysis
-  * apply moving average, moving standard deviation and Bollinger Bands for main asset Bitcoin Price
-  
-## Merge Data
-  * merge all imported dataframes into one single dataframe
-  
-## Correlative Analysis
-  * compute correlation matrix for all included time series
-  * compute correlation matrix for static shifted time series
-  * compute correlation for continuous shifting of bitcoin and stock market charts to all other indicators
+I want to find Correlation and Causality to the Bitcoin Price by shifting all other collected time series in time.
+For Example: Shifting all supportive Features one month to past gives me the freedom to look one month into the future for forcasting.
+
+## Used Data
+
+1. Stock Market Data for the last five years from [Investing.com](https://www.investing.com) for:
+  * Bitcoin
+  * DAX
+  * SP500
+  * Google
+  * Amazon
+  * Alibaba
+2. Google Trends for keywords "bitcoin", "cryptocurrency", "ethereum", "trading", "etf" using this notebook [00_scrape_googletrend.ipynb](blubb)
+3. Twitter Sentiments for keyword "bitcoin" and "#economy" using notebooks [00_scrape_twitter.py](blubb) and [00_tweet_to_sent.ipynb](blubb)
 """
 
 correlation_conclusion = """
