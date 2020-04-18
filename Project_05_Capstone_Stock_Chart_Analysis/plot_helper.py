@@ -423,11 +423,21 @@ def return_granger_plot(df_path, title="", height=1000, colormap="viridis",dash=
                             dash=dash)
 
 def return_cross_val_plot(split_dict, title="", height=1200, dash=False):
+    '''
+    Will show the true plot and predicted plot for each cross validation split.
     
+    
+    INPUT:
+         split_dict - (dict) Holds error values and time series arrays for each split
+         title - (str) Figure Title
+         height - (int) Figure Height
+         dash - (bool) On True, will return Figure with Web App specific layout
+               On False, will return plain figure
+    OUTPUT:
+         figure - (plotly Figure) will return figure with an subplot for every split
+    '''
     params = ["CORR", "MSE", "RMSE", "R2"]
-    
-   
-        
+       
     valid_list = []
     forecast_list = []
     title_list = []
@@ -482,4 +492,59 @@ def return_cross_val_plot(split_dict, title="", height=1200, dash=False):
     else:
         fig.show()
     
-    return fig
+    
+def plot_buy_sell_sim(df, title="", height=800,dash=False):
+    '''
+    Plots the results for the buy and sell simulation.
+    This includes GRU growth prediction, real price plot and Buy and Sell triggers.
+    
+    INPUT:
+        df - (DataFrame) with result columns from simulation
+        dash - (bool) On True, will return Figure with Web App specific layout
+               On False, will return plain figure
+    OUTPUT:
+        fig - (plotly Figure) with traces as described above
+    '''
+    
+    
+    fig = make_subplots(
+                        rows=1, 
+                        cols=1, 
+                        shared_xaxes=True)
+        
+        
+    fig.add_trace(go.Scatter(x=df.index, 
+                                y=df["gru_growth"],
+                                line=dict(color='blue'),
+                                name="GRU Growth"), row=1, col=1)
+
+    real_normed = (((df["curr_price"]*10)/1000)-40)
+
+    fig.add_trace(go.Scatter(x=df.index, 
+                                y=real_normed,
+                                line=dict(color='white'),
+                                name="GRU Growth"), row=1, col=1)
+
+    fig.add_trace(go.Scatter(x=df.index, 
+                                y=df["buy_trigger"],
+                                text = ["BTC: {}".format(np.round(x)) for x in df["bitcoin"]],
+                                textposition = "bottom center",
+                                marker=dict(color="crimson", size=10),
+                                mode="markers+text",
+                                name="Buy Trigger"), row=1, col=1)
+
+    fig.add_trace(go.Scatter(x=df.index, 
+                                y=df["sell_trigger"],
+                                text = ["USD: {} $".format(np.round(x)) for x in df["budget"]],
+                                textposition = "top center",
+                                textfont=dict(color=["green" if x==1 else "red" for x in df["profit"]]),
+                                marker=dict(color="yellow", size=10),
+                                mode="markers+text",
+                                name="Sell Trigger"), row=1, col=1)
+    
+    
+    
+    if dash:
+        return apply_layout(fig, title, height=height)
+    else:
+        fig.show()

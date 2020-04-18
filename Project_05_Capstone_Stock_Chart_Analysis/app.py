@@ -523,6 +523,60 @@ FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
              ]
 
 
+BUY_SELL_SIM = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
+                        dbc.CardBody( 
+                            html.Div(children=[
+                                        dbc.Row(children=[
+                                            html.Label("Day to Predict:",
+                                                style={"padding-left":20,
+                                                       "padding": 10}), 
+                                            "",
+                                            html.Label("Charts:",
+                                                style={"padding-left":20,
+                                                       "padding": 10}),
+                                            dbc.Col([
+                                                dcc.Checklist(
+                                                        id="blah",
+                                                        options=[
+                                                            {'label': 'Bollinger Bands', 
+                                                             'value': 'boll'},], value=["boll"]),
+                                            ]),
+                                            dbc.Col([
+                                                dcc.Checklist(
+                                                        id="blubb",
+                                                        options=[
+                                                            {'label': 'Sarimax Prediction', 
+                                                             'value': 'ari'},], value=["ari"]),
+                                                dcc.Checklist(
+                                                        id="blobb",
+                                                        options=[
+                                                            {'label': 'Sarimax Moving Average', 
+                                                             'value': 'ma'},], value=["ma"]),
+                                            ]),
+                                            dbc.Col([
+                                                dcc.Checklist(
+                                                    id="blibb",
+                                                    options=[
+                                                        {'label': 'GRU Prediction', 
+                                                         'value': 'gru'},], value=["gru"]),
+                                            ]),
+                                            ],
+                                            align="center",
+                                            style={"background-color": "#073642", "border-radius": "0.3rem"}),
+                                
+                                          dcc.Loading(
+                                              dcc.Graph(id="sim_plot")
+                                                       
+                                          ),
+                                          dbc.Row(children=[dbc.Col(),
+                                                            dbc.Col(),], style={"padding-top":"10px"})
+                            ])
+                        )
+             ]
+
+
+
+
 FINAL_CONCLUSIONS = ""
 
 
@@ -603,7 +657,7 @@ def show_plot(acc_01, acc_02, acc_03, acc_04, acc_05, acc_06,
         if sli_06 == 2:
             return FORE_ALL
         if sli_06 == 1:
-            return ""
+            return BUY_SELL_SIM
         if sli_06 == 0:
             return ""
 
@@ -844,7 +898,23 @@ def fill_fore_blocks(curr_day, past ,figure):
     
     return card_sents, card_trends, card_stocks
 
+                                     
+                                     
+# belongs to F, outputs forecast
+@app.callback(
+    Output("sim_plot", "figure"),
+    [Input("blah", "value")], 
+    [State("sim_plot", "figure")])
+def plot_simulatioin(var_01, figure):
+    '''
+    Will return plot for simulation with multiple slider values for adjusting simulation.
+    '''
+    result_df = do_big.simulate_buy_sell()
 
+    return ph.plot_buy_sell_sim(result_df,
+                                dash=True)                                     
+
+                                     
 # belongs to D, plots seasonal decomposition plot
 @app.callback(
     Output("caus_seasonal_plot", "figure"),

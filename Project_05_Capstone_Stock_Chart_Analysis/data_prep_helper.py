@@ -10,6 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 from keras.models import load_model
 from pandas.tseries.offsets import DateOffset
 from datetime import datetime
+from scipy.signal import argrelextrema
 
 from IPython.core import debugger
 debug = debugger.Pdb().set_trace
@@ -952,7 +953,161 @@ class ModelData(ShiftChartData):
             result_dict["S_{}_FORE".format(split_index)] = predicted.reshape(len(predicted))
 
         return result_dict
+    
+    
+    def simulate_buy_sell(self, 
+                          sim_budget=100000, 
+                          min_max_dist=5, 
+                          num_neigh=1, 
+                          gru_window=12,
+                          future_offset_val=31):
+        '''
+        Simulates Buy and Sells for Bitcoins using GRU model Prediction.
+        The daily model forecast will averaged be converted to an percentage based growth index.
+        This will flatten some of the false positives in the Model prediction.
+        The Buy and Sell triggers are applied by searching local minima and maxima from a daily perspective.
+        Some additional rules will prevent false positives from this simple search.
+        
+        INPUT:
+            sim_budget - (int) virtual amount of starting capital
+            min_max_dist - (int) minimum distance between minima/maxima in percent for trigger actions
+            num_neigh - (int) number of neighbors a minima/maxima needs to be defined
+            gru_window - (int) rolling average for daily forecast, higher values mean smoother chart
+            future_offset_val - (int) days to use from future forecast
+        OUTPUT:
+            result_df - (DataFrame) Holds GRU growth chart, real_price and buy/sell triggers
+        '''
+        budget = sim_budget
+        dist_val = min_max_dist
+        n = num_neigh
+        bitcoin = 0
+        last_bitcoin_price=0
 
+        # initial baseline for selling profit
+        last_sell_val = budget
+        
+        # init of n-1 iterations minima and maxima 
+        last_sell_max = np.nan
+        last_buy_min = np.nan
+
+        # init length of found minima/maxima
+        min_val_arr_last = 0
+        max_val_arr_last = 0
+        
+        # start condition for first iteration
+        start=0
+        last_status = "sell"
+        
+        # init lists for results
+        grow_vals = []
+        result_list = []
+
+        for curr_day in self.get_forecast_dates()[5:]:
+            result_dict = {}
+            # convert date string to datetime
+            curr_date = datetime.strptime(curr_day, "%Y-%m-%d")
+            result_dict["date"] = curr_date
+            
+            # apply offset for extracting forecast timespan
+            future_offset = curr_date + DateOffset(future_offset_val)
+
+            # get current real_price
+            real_price, _ = self.get_real_price(curr_day)
+            curr_price = float(real_price[real_price.index == curr_day]["bitcoin_Price"])
+            result_dict["curr_price"] = curr_price
+
+            # get GRU model based prediction with maximum of 26 days future forecast 
+            gru_df = self.gru_forecast(curr_day, shift=-31)
+            gru_ext_win = (future_offset_val-6)*-1
+            gru_future = gru_df[(gru_df.index < future_offset) & (gru_df.index >= curr_date)].iloc[gru_ext_win:].rolling(window=gru_window, min_periods=1).mean()
+            # calculate growth for future forecast
+            gru_growth = np.round(100 - ((gru_future.values[0]/gru_future.values[-1])*100),2)[0]
+            grow_vals.append(gru_growth)
+            result_dict["gru_growth"] = gru_growth
+
+            # calculate local minima's from GRU growth plot
+            min_val_arr = argrelextrema(np.array(grow_vals), np.less_equal, order=n)[0]
+            min_val_arr_len = len(min_val_arr)
+
+            # calculate local maxima's from GRU growth plot
+            max_val_arr = argrelextrema(np.array(grow_vals), np.greater, order=n)[0]
+            max_val_arr_len = len(max_val_arr)
+
+            # init min and max values that are trigger for buy(min) and sell(max)
+            min_val = np.nan
+            max_val = np.nan
+
+            # if a new minima was found, a min_val will be set
+            if (min_val_arr_len > min_val_arr_last):
+                min_val = grow_vals[min_val_arr[-1]]
+                min_val_arr_last = min_val_arr_len
+
+            # if a new maxima was found, a max_val will be set
+            if (max_val_arr_len > max_val_arr_last):
+                max_val = grow_vals[max_val_arr[-1]]
+                max_val_arr_last = max_val_arr_last
+            
+            # Remove all local maxima that are below Zero
+            # because this would lead to many wrong selling decisions
+            if (max_val < 0):
+                max_val = np.nan
+
+            # buying logic: if min_val is set and last action was a sell we will go further
+            if np.isfinite(min_val) and (last_status == "sell"):
+                # store minimum value for next iteration for calculating distance
+                last_buy_min = min_val
+                dist = abs(abs(last_buy_min)-abs(last_sell_max))
+                # a specific absolute distance has to be between previous maxima current minima
+                # or start for first step without dist set
+                if (dist>dist_val) or (start==0):
+                    # the new minimum has to be smaller than last maximum for
+                    # preventing many wrong buying decisions
+                    if (min_val < last_sell_max) or (start==0):
+                        result_dict["buy_trigger"] = min_val
+                        result_dict["buy_price"] = curr_price
+                        
+                        # negate first iteration condition
+                        start=1
+                        
+                        # buy bitcoin
+                        bitcoin = budget/curr_price
+                        budget = 0
+                        last_status = "buy"
+
+                        #print("{}: Buy Bitcoin for {}\n\tNow having {} Bitcoin\n".format(curr_day, curr_price, bitcoin))
+
+            # selling logic: if max_val is set and last action was a buy we will go further
+            if np.isfinite(max_val) and (last_status == "buy"):
+                # store maximum value for next iteration for calculating distance
+                last_sell_max = max_val
+                dist = abs(abs(last_buy_min)-abs(last_sell_max))
+                # a specific absolute distance has to be between previous minima current minima
+                if (dist>dist_val):
+                    result_dict["sell_trigger"] = max_val
+                    result_dict["sell_price"] = curr_price
+                    
+                    # sell bitcoin
+                    budget = bitcoin*curr_price
+                    bitcoin = 0
+                    last_status = "sell"
+                    
+                    # store 1 if last sell was profitable and 0 if not
+                    if budget < last_sell_val:
+                        result_dict["profit"] = 0
+                    else:
+                        result_dict["profit"] = 1
+                    last_sell_val = budget
+                    #print("{} {}: Sell Bitcoin for {}\n\tNow having {} Dollar\n".format(result_marker ,curr_day, curr_price, budget))
+
+            result_dict["budget"] = budget
+            result_dict["bitcoin"] = bitcoin
+
+            result_list.append(result_dict)
+        
+        result_df = pd.DataFrame(result_list).set_index("date")
+        return result_df
+
+    
 ### APPLY FUNCTIONS ###
     
 def convert_values(row, col):
