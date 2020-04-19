@@ -19,23 +19,38 @@ using supervised and unsupervised Machine Learning Approaches, this includes:
 
 ## Approach/Idea
 
+It's nearly impossible to give an accurate prediction for Stock Charts or Cryptocurrency Charts for the Future.
+Therefore I will only try to find signals or triggers that may announce major Movements on the Bitcoin Chart and may occur
+right before the real movements.
+
 I want to find Correlation and Causality to the Bitcoin Price by shifting all other collected time series in time.
 For Example: Shifting all supportive Features one month to past gives me the freedom to look one month into the future for forcasting.
+These notebooks will show my course of action:
 
-Therefore the webapp will do only prediction in a timespan in the past for seeing the comparision to the true price.
+  * [01 Correlation Analysis](https://github.com/herrfeder/DataScientist/blob/master/Project_05_Capstone_Stock_Chart_Analysis/01_corr_analysis.ipynb)
+  * [02 Stationarity and Causality Analysis](https://github.com/herrfeder/DataScientist/blob/master/Project_05_Capstone_Stock_Chart_Analysis/stationarity_causality_analysis.ipynb)
+  * [03 SARIMA Modelling](https://github.com/herrfeder/DataScientist/blob/master/Project_05_Capstone_Stock_Chart_Analysis/03_1_model_ARIMAX.ipynb)
+  * [04 GRU Modelling](https://github.com/herrfeder/DataScientist/blob/master/Project_05_Capstone_Stock_Chart_Analysis/04_model_GRU.ipynb)
+  * [05 Decision Algorithm](https://github.com/herrfeder/DataScientist/blob/master/Project_05_Capstone_Stock_Chart_Analysis/05_decision_algorithm.ipynb)
+
+
+
+## Screenshots of Webapp
+
+| Forecast Application | Buy And Sell Simulation | Timeshift Correlation |
+|--------------------------------------|--------------------------------------|--------------------------------------|
+| ![](https://github.com/herrfeder/DataScientist/raw/master/Project_05_Capstone_Stock_Chart_Analysis/images/forecast_full_view.png) | ![](https://github.com/herrfeder/DataScientist/raw/master/Project_05_Capstone_Stock_Chart_Analysis/images/buy_and_sell_sim.png) | ![](https://github.com/herrfeder/DataScientist/raw/master/Project_05_Capstone_Stock_Chart_Analysis/images/corr_timeshift.png) |
+
 
 ## Used Data
 
 1. Stock Market Data for the last five years from [Investing.com](https://www.investing.com) for:
-  * Bitcoin
-  * DAX
-  * SP500
-  * Google
-  * Amazon
-  * Alibaba
-2. Google Trends for keywords "bitcoin", "cryptocurrency", "ethereum", "trading", "etf" using this notebook [00_scrape_googletrend.ipynb](blubb)
-3. Twitter Sentiments for keyword "bitcoin" and "#economy" using notebooks [00_scrape_twitter.py](blubb) and [00_tweet_to_sent.ipynb](blubb)
-
+  * Bitcoin, DAX, SP500, Google, Amazon, Alibaba
+2. Google Trends for keywords "bitcoin", "cryptocurrency", "ethereum", "trading", "etf" using this notebook 
+  * [00_scrape_googletrend.ipynb](https://github.com/herrfeder/DataScientist/blob/master/Project_05_Capstone_Stock_Chart_Analysis/00_scrape_googletrend.ipynb)
+3. Twitter Sentiments for keyword "bitcoin" and "#economy" using notebooks 
+  * [00_scrape_twitter.py](blubb)
+  * [00_tweet_to_sent.ipynb](blubb)
 
 ## Used Libaries
 
@@ -59,13 +74,9 @@ Therefore the webapp will do only prediction in a timespan in the past for seein
     * [Tensorflow](https://github.com/tensorflow/tensorflow)
     * [Keras](https://github.com/keras-team/keras)
 
-## Screenshots of Webapp
 
-| Forecast Application | Buy And Sell Simulation | Timeshift Correlation |
-|--------------------------------------|--------------------------------------|--------------------------------------|
-| ![](https://github.com/herrfeder/DataScientist/raw/master/Project_05_Capstone_Stock_Chart_Analysis/images/forecast_full_view.png) | ![](https://github.com/herrfeder/DataScientist/raw/master/Project_05_Capstone_Stock_Chart_Analysis/images/buy_and_sell_sim.png) | ![](https://github.com/herrfeder/DataScientist/raw/master/Project_05_Capstone_Stock_Chart_Analysis/images/corr_timeshift.png) |
 
-## Included Files
+## Included Other Files
   
   * __webapp__: Folder that holds the files and folders for the Dash webapp. For installation and deployment, look into it
   * __00_scrape_googletrend.ipynb__: Scraping Google Trends
@@ -87,7 +98,7 @@ Therefore the webapp will do only prediction in a timespan in the past for seein
 The model prediction for using "young" time series that are shifted up to a week are pretty accurate.
 The model prediction for the desired month isn't far away from beeing accurate but we can see several volatile Chart Movements before they will happen and that's a nice result.
 
-## Possible Roadmap
+## Possible Roadmap/Chances
 
   * Extensive Hyperparameter Optimization: Due to a lack of time, resources and knowledge this was only done rudimentary. I'm sure the models can be improved
     by that.
