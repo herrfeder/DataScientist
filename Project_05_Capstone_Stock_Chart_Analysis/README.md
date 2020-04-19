@@ -95,15 +95,16 @@ These notebooks will show my course of action:
 
 ## Brief Results
 
-The model prediction for using "young" time series that are shifted up to a week are pretty accurate.
-The model prediction for the desired month isn't far away from beeing accurate but we can see several volatile Chart Movements before they will happen and that's a nice result.
+The model prediction for using time series that aren't shifted far into the past like up to a week are pretty accurate.
+The model prediction for the desired month is far away from beeing accurate but we can see several volatile Chart Movements in forms of signals and triggers before they will happen and that's a nice result. It seems by averaging the forecast we can get good recommendations for Buy and Sell decisions.
 
-## Possible Roadmap/Chances
+### Possible Roadmap/Chances
 
   * Extensive Hyperparameter Optimization: Due to a lack of time, resources and knowledge this was only done rudimentary. I'm sure the models can be improved
     by that.
   * Extend Webapp to full realtime Forecasting.
   * Check more and more different feature time series.
+  * Get a better understanding of Deep Learning RNN's like GRU
 
 
 ## Installation and Deployment
@@ -117,3 +118,33 @@ Please be gentle, it's running on limited resources. This app __isn't responsive
 ## Acknowledgements
 
   * To [Nicolas Essipova](https://github.com/NicoEssi) for being my mentor for the whole Nanodegree
+  * To all the authors of explanations, code snippets and functions I mention in Resources
+  
+## Resources
+
+### Causality Resources
+
+  * General Explanation and Tutorial for Stationarity Analysis of Time Series:
+    * https://www.analyticsvidhya.com/blog/2018/09/non-stationary-time-series-python/
+  * Explanation of Difference Correlation and Causalisation: 
+    * https://calculatedcontent.com/2013/05/27/causation-vs-correlation-granger-causality/
+  * Used Granger Causality Function from: 
+    * https://www.machinelearningplus.com/time-series/vector-autoregression-examples-python/
+
+### SARIMAX Resources
+
+  * Good Overview about ARIMA Models: 
+    * https://www.machinelearningplus.com/time-series/arima-model-time-series-forecasting-python/
+  * How to prepare Explanatory Variables for Multivariate SARIMAX Model: 
+    * https://www.kaggle.com/viridisquotient/arimax
+  * How to prepare Time Series data for Multivariate SARIMAX Model: 
+    * https://www.machinelearningplus.com/time-series/time-series-analysis-python/
+
+### GRU Resources
+
+  * Great visual explanation of RNN (LSTM/GRU):
+    * https://towardsdatascience.com/illustrated-guide-to-lstms-and-gru-s-a-step-by-step-explanation-44e9eb85bf21
+  * Data Preprocessing for Keras GRU:
+    * https://github.com/deKeijzer/Multivariate-time-series-models-in-Keras
+  * The GRU Code is inspired and Model Concept is used from there: 
+    * https://github.com/ninja3697/Stocks-Price-Prediction-using-Multivariate-Analysis/blob/master/Multivatiate-GRU/Multivariate-3-GRU.ipynb
