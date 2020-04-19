@@ -4,3 +4,6 @@
 [submodule "Project_04_Recommendations_With_IBM/webapp"]
 	path = Project_04_Recommendations_With_IBM/webapp
 	url = https://github.com/herrfeder/Udacity-Project-Recommendations-With-IBM-Webapp.git
+[submodule "Project_05_Capstone_Stock_Chart_Analysis/webapp"]
+	path = Project_05_Capstone_Stock_Chart_Analysis/webapp
+	url = https://github.com/herrfeder/Udacity-Data-Scientist-Capstone-Multivariate-Timeseries-Prediction-Webapp.git

@@ -1016,9 +1016,12 @@ class ModelData(ShiftChartData):
             curr_price = float(real_price[real_price.index == curr_day]["bitcoin_Price"])
             result_dict["curr_price"] = curr_price
 
-            # get GRU model based prediction with maximum of 26 days future forecast 
+            # get GRU model based prediction with maximum of 26 days future forecast
             gru_df = self.gru_forecast(curr_day, shift=-31)
-            gru_ext_win = (future_offset_val-6)*-1
+            lookback_offset = 6
+            
+                
+            gru_ext_win = (future_offset_val-lookback_offset)*-1
             gru_future = gru_df[(gru_df.index < future_offset) & (gru_df.index >= curr_date)].iloc[gru_ext_win:].rolling(window=gru_window, min_periods=1).mean()
             # calculate growth for future forecast
             gru_growth = np.round(100 - ((gru_future.values[0]/gru_future.values[-1])*100),2)[0]

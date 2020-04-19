@@ -130,7 +130,7 @@ def get_ari_plot(df, fig="", title="", offset=31, conf_int=False, mean_averaged=
         return fig
     
 
-def price_plot(df, real_30=pd.DataFrame(),fig="", title="", boll=True, dash=False, names=["BTC Price",
+def price_plot(df, real_30=pd.DataFrame(),fig="", title="", boll=True, dash=False, height=800,names=["BTC Price",
                                            "BTC 30 Day Moving Average",
                                            "BTC Upper Bollinger Band",
                                            "BTC Lower Bollinger Band"]):
@@ -160,7 +160,7 @@ def price_plot(df, real_30=pd.DataFrame(),fig="", title="", boll=True, dash=Fals
      
     fig.add_trace(go.Scatter(x=df.index, 
                              y=df['bitcoin_Price'],
-                             line=dict(color='red'),
+                             line=dict(color='#2cfec1'),
                              name=names[0]), row=1, col=1)
     
     if not real_30.empty:
@@ -189,7 +189,7 @@ def price_plot(df, real_30=pd.DataFrame(),fig="", title="", boll=True, dash=Fals
         
         
     if dash:
-        return apply_layout(fig, title, height=600)
+        return apply_layout(fig, title, height)
     else:
         return fig
 
@@ -493,7 +493,7 @@ def return_cross_val_plot(split_dict, title="", height=1200, dash=False):
         fig.show()
     
     
-def plot_buy_sell_sim(df, title="", height=800,dash=False):
+def plot_buy_sell_sim(df, title="", height=500,dash=False):
     '''
     Plots the results for the buy and sell simulation.
     This includes GRU growth prediction, real price plot and Buy and Sell triggers.
@@ -515,15 +515,15 @@ def plot_buy_sell_sim(df, title="", height=800,dash=False):
         
     fig.add_trace(go.Scatter(x=df.index, 
                                 y=df["gru_growth"],
-                                line=dict(color='blue'),
+                                line=dict(color='#2cfec1'),
                                 name="GRU Growth"), row=1, col=1)
 
     real_normed = (((df["curr_price"]*10)/1000)-40)
 
     fig.add_trace(go.Scatter(x=df.index, 
                                 y=real_normed,
-                                line=dict(color='white'),
-                                name="GRU Growth"), row=1, col=1)
+                                line=dict(color='grey'),
+                                name="Real Price Scaled"), row=1, col=1)
 
     fig.add_trace(go.Scatter(x=df.index, 
                                 y=df["buy_trigger"],
