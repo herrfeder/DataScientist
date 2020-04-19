@@ -25,6 +25,9 @@ from sklearn.metrics import mean_squared_error, r2_score
 import plot_helper as ph
 import data_prep_helper
 import conclusion_texts
+import locale
+
+locale.setlocale( locale.LC_ALL, '' )
 
 from dash.dependencies import Input, Output, State
 from plotly import tools
@@ -442,32 +445,35 @@ FORE_DAYS_PICKER =  html.Div([
         ),])
 
 
-FORE_SENTIMENTS = [dbc.CardHeader(dbc.Row([html.P("TWITTER SENTIMENTS")]),style={"height":"40px"}),
+FORE_SENTIMENTS = [dbc.CardHeader(dbc.Row([html.P("TWITTER SENTIMENTS", id="sent_header")]),style={"height":"40px"}),
                    dbc.CardBody(html.P("EMPTY"), id="card_sents", style={"height":"130px",
                                                                          "background-color":"#073642"})]
 
-FORE_TRENDS = [dbc.CardHeader(dbc.Row([html.P("GOOGLE TRENDS")]), style={"height":"40px"}),
+FORE_TRENDS = [dbc.CardHeader(dbc.Row([html.P("GOOGLE TRENDS", id="trend_header")]), style={"height":"40px"}),
                    dbc.CardBody(html.P("EMPTY"), id="card_trends", style={"height":"130px",
                                                                          "background-color":"#073642"})]
 
-FORE_STOCKS = [dbc.CardHeader(dbc.Row([html.P("STOCKS")]), style={"height":"40px"}),
+FORE_STOCKS = [dbc.CardHeader(dbc.Row([html.P("STOCKS", id="stocks_header")]), style={"height":"40px"}),
                    dbc.CardBody(html.P("EMPTY"), id="card_stocks", style={"height":"130px",
                                                                          "background-color":"#073642"})]
 
-FORE_PAST_SLIDER =  html.Div(children=[
-                        dcc.Slider(
-                            id='fore_past_slider',
-                            updatemode = "drag",
-                            marks={day_shift: {
-                                            "label": str(day_shift),
-                                            "style": {"color": "#7fafdf"},
-                                        }
-                                        for day_shift in range(0,35,5) },
-                            min=0,
-                            max=30,
-                            step=5,
-                            value=20,),
-                    ],style={"width":"20%"})
+FORE_PAST_SLIDER =  [dbc.CardHeader(dbc.Row([html.P("Past Timespan:")]), style={"height":"40px"}),
+                        dbc.CardBody(children=[
+                            dbc.Col(
+                                dcc.Slider(
+                                    id='fore_past_slider',
+                                    #updatemode = "drag",
+                                    vertical = True,
+                                    min=0,
+                                    max=30,
+                                    value=20,
+                                    tooltip={"always_visible":False,
+                                             "placement":"left"},
+                                    verticalHeight=120),
+                                 width={"size": 6, "offset": 3},
+                            )
+                    ],style={"height":"130px",
+                             "background-color":"#073642"})]
 
 FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                         dbc.CardBody( 
@@ -506,7 +512,6 @@ FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                                                         {'label': 'GRU Prediction', 
                                                          'value': 'gru'},], value=["gru"]),
                                             ]),
-                                            FORE_PAST_SLIDER,
                                             ],
                                             align="center",
                                             style={"background-color": "#073642", "border-radius": "0.3rem"}),
@@ -515,7 +520,8 @@ FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                                               dcc.Graph(id="fore_plot")
                                                        
                                           ),
-                                          dbc.Row(children=[dbc.Col(FORE_SENTIMENTS),
+                                          dbc.Row(children=[html.Div(FORE_PAST_SLIDER),
+                                                            dbc.Col(FORE_SENTIMENTS),
                                                             dbc.Col(FORE_TRENDS),
                                                             dbc.Col(FORE_STOCKS)], style={"padding-top":"10px"})
                             ])
@@ -523,53 +529,110 @@ FORE_ALL = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
              ]
 
 
+
+BUDGET_SLIDER = dcc.Slider(
+                                    id='sim_budget',
+                                    #updatemode = "drag",
+                                    vertical = True,
+                                    min=1000,
+                                    max=1000000,
+                                    value=100000,
+                                    tooltip={"always_visible":True,
+                                             "placement":"bottom"},
+                                    verticalHeight=120)
+
+MINMAX_DIST_SLIDER = dcc.Slider(
+                                    id='maxmin_dist',
+                                    #updatemode = "drag",
+                                    vertical = True,
+                                    min=1,
+                                    max=10,
+                                    value=5,
+                                    tooltip={"always_visible":True,
+                                             "placement":"bottom"},
+                                    verticalHeight=120)
+
+MINMAX_NEIGH_SLIDER = dcc.Slider(
+                                    id='maxmin_neigh',
+                                    #updatemode = "drag",
+                                    vertical = True,
+                                    min=1,
+                                    max=5,
+                                    value=1,
+                                    tooltip={"always_visible":True,
+                                             "placement":"bottom"},
+                                    verticalHeight=120)
+
+GRU_WINDOW_SLIDER = dcc.Slider(
+                                    id='gru_window',
+                                    #updatemode = "drag",
+                                    vertical = True,
+                                    min=3,
+                                    max=20,
+                                    value=12,
+                                    tooltip={"always_visible":True,
+                                             "placement":"bottom"},
+                                    verticalHeight=120)
+
+
+
+INPUT_BUDGET = [dbc.CardHeader(dbc.Row([html.P("START BUDGET")]),style={"height":"20px"}),
+                   dbc.CardBody(html.Div(id="input_budget"), style={"height":"130px",
+                                                                         "background-color":"#073642"})]
+
+MAX_BUDGET = [dbc.CardHeader(dbc.Row([html.P("MAX BUDGET")]),style={"height":"20px"}),
+                   dbc.CardBody(html.Div(id="max_budget"), style={"height":"130px",
+                                                                         "background-color":"#073642"})]
+
+MIN_BUDGET = [dbc.CardHeader(dbc.Row([html.P("MIN BuDGET")]),style={"height":"20px"}),
+                   dbc.CardBody(html.Div(id="min_budget"), style={"height":"130px",
+                                                                         "background-color":"#073642"})]
+
+PROFIT_BUDGET = [dbc.CardHeader(dbc.Row([html.P("PROFIT")]),style={"height":"20px"}),
+                   dbc.CardBody(html.Div(id="profit_budget"), style={"height":"130px",
+                                                                         "background-color":"#073642"})]
+
+
 BUY_SELL_SIM = [dbc.CardHeader(html.H5("Forecasting and Parameters for Day")),
                         dbc.CardBody( 
                             html.Div(children=[
                                         dbc.Row(children=[
-                                            html.Label("Day to Predict:",
-                                                style={"padding-left":20,
+                                            html.Label("Budget:",
+                                                style={"padding-left":10,
                                                        "padding": 10}), 
-                                            "",
-                                            html.Label("Charts:",
-                                                style={"padding-left":20,
+                                            BUDGET_SLIDER,
+                                            html.Label("Distance Max/Min:",
+                                                style={"padding-left":10,
                                                        "padding": 10}),
-                                            dbc.Col([
-                                                dcc.Checklist(
-                                                        id="blah",
-                                                        options=[
-                                                            {'label': 'Bollinger Bands', 
-                                                             'value': 'boll'},], value=["boll"]),
-                                            ]),
-                                            dbc.Col([
-                                                dcc.Checklist(
-                                                        id="blubb",
-                                                        options=[
-                                                            {'label': 'Sarimax Prediction', 
-                                                             'value': 'ari'},], value=["ari"]),
-                                                dcc.Checklist(
-                                                        id="blobb",
-                                                        options=[
-                                                            {'label': 'Sarimax Moving Average', 
-                                                             'value': 'ma'},], value=["ma"]),
-                                            ]),
-                                            dbc.Col([
-                                                dcc.Checklist(
-                                                    id="blibb",
-                                                    options=[
-                                                        {'label': 'GRU Prediction', 
-                                                         'value': 'gru'},], value=["gru"]),
-                                            ]),
+                                            MINMAX_DIST_SLIDER,
+                                            html.Label("Neighbors Max/Min:",
+                                                style={"padding-left":10,
+                                                       "padding": 10}),
+                                            MINMAX_NEIGH_SLIDER,
+                                            html.Label("GRU Windows Smooth:",
+                                                style={"padding-left":10,
+                                                       "padding": 10}),
+                                            GRU_WINDOW_SLIDER,
+                                            dbc.Button("Run Simulation", 
+                                                       id="sim_button", 
+                                                       style={"padding-left":20,
+                                                              "padding":10},
+                                                       className="btn btn-success"),
                                             ],
                                             align="center",
                                             style={"background-color": "#073642", "border-radius": "0.3rem"}),
                                 
-                                          dcc.Loading(
-                                              dcc.Graph(id="sim_plot")
-                                                       
-                                          ),
-                                          dbc.Row(children=[dbc.Col(),
-                                                            dbc.Col(),], style={"padding-top":"10px"})
+                                        dbc.Row(children=[dbc.Col(INPUT_BUDGET),
+                                                          dbc.Col(MAX_BUDGET),
+                                                          dbc.Col(MIN_BUDGET),
+                                                          dbc.Col(PROFIT_BUDGET)], style={"padding-top":"10px"}),
+                                        dbc.Spinner(color="info", 
+                                                      type="grow",
+                                                      style={"width": "10rem", "height": "10rem"},
+                                                      children=[
+                                                                dcc.Graph(id="sim_plot")],
+                                        ),
+                                         
                             ])
                         )
              ]
@@ -862,8 +925,11 @@ def plot_forecast(curr_day, boll_check, arimax_check, sarimax_ma, gru_check, fig
 # belongs to F, controls growth indexes in forecast plot
 @app.callback(
     [Output("card_sents", "children"),
+     Output("sent_header", "children"),
      Output("card_trends", "children"),
-     Output("card_stocks", "children")],
+     Output("trend_header", "children"),
+     Output("card_stocks", "children"),
+     Output("stocks_header", "children")],
     [Input("fore_days_picker", "date"),
      Input("fore_past_slider", "value")], 
     [State("fore_plot", "figure")])
@@ -893,26 +959,54 @@ def fill_fore_blocks(curr_day, past ,figure):
     growth_dict = do_big.get_growth(curr_day, past, all_indicators)
     
     card_sents = build_growth_content(growth_dict, sentiments)
+    sents_header = "TWITTER SENTIMENTS last {} days".format(abs(past))
     card_trends = build_growth_content(growth_dict, trends)
+    trends_header = "GOOGLE TRENDS last {} days".format(abs(past))
     card_stocks = build_growth_content(growth_dict, stocks)
-    
-    return card_sents, card_trends, card_stocks
+    stocks_header = "STOCKS last {} days".format(abs(past))
+
+    return card_sents, sents_header, card_trends, trends_header, card_stocks, stocks_header
 
                                      
                                      
 # belongs to F, outputs forecast
 @app.callback(
-    Output("sim_plot", "figure"),
-    [Input("blah", "value")], 
-    [State("sim_plot", "figure")])
-def plot_simulatioin(var_01, figure):
+    [Output("sim_plot", "figure"),
+     Output("input_budget", "children"),
+     Output("max_budget", "children"),
+     Output("min_budget", "children"),
+     Output("profit_budget", "children")],
+    [Input("sim_button", "n_clicks")], 
+    [State("sim_budget", "value"),
+     State("maxmin_dist", "value"),
+     State("maxmin_neigh", "value"),
+     State("gru_window", "value"),
+     State("sim_plot", "figure")])
+def plot_simulation(n_clicks, sim_budget, min_max_dist, num_neigh, gru_window, figure):
     '''
     Will return plot for simulation with multiple slider values for adjusting simulation.
     '''
-    result_df = do_big.simulate_buy_sell()
-
-    return ph.plot_buy_sell_sim(result_df,
-                                dash=True)                                     
+    
+    result_df = do_big.simulate_buy_sell(sim_budget, min_max_dist, num_neigh, gru_window, future_offset_val=31)
+    
+    in_budget = html.P("{}".format(locale.currency(sim_budget),grouping=True), style={"font-weight":"bold", "font-size":"25px"})
+                       
+    max_val = result_df.budget.max()
+    min_val = pd.Series(result_df.budget.unique()).nsmallest(2).iloc[-1]
+    out_val = result_df.budget[-1]
+    
+    output_budgets = []
+    for val in [max_val, min_val, out_val]:
+        if val >= sim_budget:
+            color="green"
+        else:
+            color = "red"
+        cur = locale.currency(val, grouping=True)
+        output_budgets.append(html.P("{}".format(cur),style={"color":color,"font-weight":"bold", "font-size":"25px"}))
+    
+                       
+                       
+    return ph.plot_buy_sell_sim(result_df, dash=True), in_budget, output_budgets[0], output_budgets[1], output_budgets[2]                                     
 
                                      
 # belongs to D, plots seasonal decomposition plot
