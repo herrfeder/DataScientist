@@ -61,9 +61,9 @@ Therefore the webapp will do only prediction in a timespan in the past for seein
 
 ## Screenshots of Webapp
 
-| Forecast Application | View all Data | Granger Causality Plot |
+| Forecast Application | Buy And Sell Simulation | Timeshift Correlation |
 |--------------------------------------|--------------------------------------|--------------------------------------|
-| ![](https://github.com/herrfeder/Udacity-Project-Recommendations-With-IBM-Webapp/raw/8db15c2ebe164d14f956c593809874259e378a30/screenshots/recommendations_webapp_top.png) | ![](https://github.com/herrfeder/Udacity-Project-Recommendations-With-IBM-Webapp/raw/8db15c2ebe164d14f956c593809874259e378a30/screenshots/recommendations_webapp_bottom.png) | ![](https://github.com/herrfeder/Udacity-Project-Recommendations-With-IBM-Webapp/raw/8db15c2ebe164d14f956c593809874259e378a30/screenshots/recommendations_webapp_bottom.png) |
+| ![](https://github.com/herrfeder/DataScientist/raw/master/Project_05_Capstone_Stock_Chart_Analysis/images/forecast_full_view.png) | ![](https://github.com/herrfeder/DataScientist/raw/master/Project_05_Capstone_Stock_Chart_Analysis/images/buy_and_sell_sim.png) | ![](https://github.com/herrfeder/DataScientist/raw/master/Project_05_Capstone_Stock_Chart_Analysis/images/corr_timeshift.png) |
 
 ## Included Files
   
